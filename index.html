@@ -8,15 +8,14 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
-  body.modal-open { overflow: hidden; }
-  body { font-family: 'Inter', sans-serif; }
-  @media (max-width: 768px){
-    header h1 { font-size: 1.3rem; }
-    header p { font-size: 0.8rem; }
-    .grid { grid-template-columns: 1fr !important; }
-    table th, table td { font-size: 0.8rem; padding: 6px !important; }
-    .w-96 { width: 90% !important; }
-  }
+body.modal-open { overflow: hidden; }
+body { font-family: 'Inter', sans-serif; }
+@media (max-width: 768px){
+  header h1 { font-size: 1.3rem; }
+  header p { font-size: 0.8rem; }
+  table th, table td { font-size: 0.8rem; padding: 6px !important; }
+  .w-96 { width: 90% !important; }
+}
 </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-blue-200 min-h-screen">
@@ -27,101 +26,70 @@
   <p class="text-sm text-blue-100">Input dan Kelola Data Pembayaran</p>
 </header>
 
-<!-- MAIN CONTAINER -->
-<div class="max-w-6xl mx-auto p-4 sm:p-6 grid lg:grid-cols-2 gap-6 mt-6">
-
-  <!-- FORM INPUT -->
-  <div class="bg-white rounded-2xl p-6 shadow-lg transition-all duration-300 hover:shadow-xl">
-    <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2 flex items-center gap-2">📝 Form Input</h2>
-    <form id="formData" class="space-y-3">
-      <input id="nama" type="text" placeholder="Nama Lengkap" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-      <select id="divisi" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-        <option value="">Pilih Divisi</option>
-        <option value="Ketua Umum">Ketua Umum (1)</option>
-        <option value="Wakil Ketua Umum">Wakil Ketua Umum (1)</option>
-        <option value="Bendahara Umum">Bendahara Umum (2)</option>
-        <option value="Sekretaris Umum">Sekretaris Umum (2)</option>
-        <option value="Medinfo">Medinfo (10)</option>
-        <option value="Networking">Networking (14)</option>
-        <option value="Kewirausahaan">Kewirausahaan (12)</option>
-        <option value="Inbis">Inbis (12)</option>
-        <option value="Demis">Demis (10)</option>
-      </select>
-      <input id="prodi" type="text" placeholder="Prodi" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-      <select id="angkatan" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-        <option value="">Pilih Angkatan</option>
-        <option value="21">2021</option>
-        <option value="22">2022</option>
-        <option value="23">2023</option>
-        <option value="24">2024</option>
-        <option value="25">2025</option>
-      </select>
-      <input id="nominal" type="number" placeholder="Nominal (Rp)" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-      <div class="space-y-2">
-        <label class="flex items-center"><input type="radio" name="tipe" value="partisipasi_makan" class="mr-2"> Partisipasi + Makan</label>
-        <label class="flex items-center"><input type="radio" name="tipe" value="full" class="mr-2"> Full (Partisipasi + Makan + Kas)</label>
-      </div>
-      <select id="status" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
-        <option value="Belum Lunas">Belum Lunas</option>
-        <option value="Lunas">Lunas</option>
-      </select>
-      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.02]">💾 Simpan Data</button>
-    </form>
-    <p id="info" class="text-center mt-3 text-green-600 hidden">Data berhasil disimpan!</p>
-  </div>
-
-  <!-- TABEL DATA -->
-  <div class="bg-white rounded-2xl p-6 shadow-lg overflow-x-auto transition-all duration-300 hover:shadow-xl">
-    <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2 flex items-center gap-2">📋 Data Pembayaran</h2>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm border min-w-[600px]">
-        <thead class="bg-blue-100 text-blue-800">
-          <tr>
-            <th class="p-2 text-left">Nama</th>
-            <th class="p-2 text-left">Divisi</th>
-            <th class="p-2 text-left">Prodi - Akt</th>
-            <th class="p-2 text-center">Nominal</th>
-            <th class="p-2 text-center">Tipe</th>
-            <th class="p-2 text-center">Status</th>
-            <th class="p-2 text-center">Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="dataTable"></tbody>
-      </table>
+<!-- FORM INPUT CENTER -->
+<div class="max-w-3xl mx-auto mt-6 bg-white rounded-2xl p-6 shadow-lg transition-all duration-300 hover:shadow-xl">
+  <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2 text-center">📝 Form Input</h2>
+  <form id="formData" class="space-y-3">
+    <input id="nama" type="text" placeholder="Nama Lengkap" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
+    <select id="divisi" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
+      <option value="">Pilih Divisi</option>
+      <option value="Ketua Umum">Ketua Umum (1)</option>
+      <option value="Wakil Ketua Umum">Wakil Ketua Umum (1)</option>
+      <option value="Bendahara Umum">Bendahara Umum (2)</option>
+      <option value="Sekretaris Umum">Sekretaris Umum (2)</option>
+      <option value="Medinfo">Medinfo (10)</option>
+      <option value="Networking">Networking (14)</option>
+      <option value="Kewirausahaan">Kewirausahaan (12)</option>
+      <option value="Inbis">Inbis (12)</option>
+      <option value="Demis">Demis (10)</option>
+    </select>
+    <input id="prodi" type="text" placeholder="Prodi" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
+    <select id="angkatan" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
+      <option value="">Pilih Angkatan</option>
+      <option value="21">2021</option>
+      <option value="22">2022</option>
+      <option value="23">2023</option>
+      <option value="24">2024</option>
+      <option value="25">2025</option>
+    </select>
+    <input id="nominal" type="number" placeholder="Nominal (Rp)" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
+    <div class="space-y-2">
+      <label class="flex items-center"><input type="radio" name="tipe" value="partisipasi_makan" class="mr-2"> Partisipasi + Makan</label>
+      <label class="flex items-center"><input type="radio" name="tipe" value="full" class="mr-2"> Full (Partisipasi + Makan + Kas)</label>
     </div>
-  </div>
+    <select id="status" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+      <option value="Belum Lunas">Belum Lunas</option>
+      <option value="Lunas">Lunas</option>
+    </select>
+    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.02]">💾 Simpan Data</button>
+  </form>
+  <p id="info" class="text-center mt-3 text-green-600 hidden">Data berhasil disimpan!</p>
 </div>
 
-<!-- POPUP EDIT -->
-<div id="editModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
-  <div class="bg-white rounded-xl shadow-2xl p-6 w-full sm:w-96 relative">
-    <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2">✏️ Edit Data</h2>
-    <form id="editForm" class="space-y-3">
-      <input id="editNama" type="text" class="w-full p-2 border rounded-lg" required>
-      <input id="editProdi" type="text" class="w-full p-2 border rounded-lg" required>
-      <select id="editAngkatan" class="w-full p-2 border rounded-lg" required>
-        <option value="">Pilih Angkatan</option>
-        <option value="21">2021</option>
-        <option value="22">2022</option>
-        <option value="23">2023</option>
-        <option value="24">2024</option>
-        <option value="25">2025</option>
-      </select>
-      <select id="editDivisi" class="w-full p-2 border rounded-lg" required></select>
-      <input id="editNominal" type="number" class="w-full p-2 border rounded-lg" required>
-      <div class="space-y-2">
-        <label class="flex items-center"><input type="radio" name="editTipe" value="partisipasi_makan" class="mr-2"> Partisipasi + Makan</label>
-        <label class="flex items-center"><input type="radio" name="editTipe" value="full" class="mr-2"> Full (Partisipasi + Makan + Kas)</label>
-      </div>
-      <select id="editStatus" class="w-full p-2 border rounded-lg">
-        <option value="Belum Lunas">Belum Lunas</option>
-        <option value="Lunas">Lunas</option>
-      </select>
-      <div class="flex justify-between pt-3">
-        <button type="button" onclick="closeModal()" class="bg-gray-400 text-white px-3 py-1 rounded-lg hover:bg-gray-500">Batal</button>
-        <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Simpan</button>
-      </div>
-    </form>
+<!-- DATA PEMBAYARAN FULL WIDTH -->
+<div class="max-w-6xl mx-auto mt-6 bg-white rounded-2xl p-6 shadow-lg overflow-x-auto transition-all duration-300 hover:shadow-xl">
+  <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2">📋 Data Pembayaran</h2>
+  
+  <!-- PENCARIAN -->
+  <div class="mb-3 flex gap-2 items-center">
+    <input id="searchInput" type="text" placeholder="Cari Nama atau Divisi..." class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+  </div>
+  
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm border min-w-[600px]">
+      <thead class="bg-blue-100 text-blue-800">
+        <tr>
+          <th class="p-2 text-left">Nama</th>
+          <th class="p-2 text-left">Divisi</th>
+          <th class="p-2 text-left">Prodi - Akt</th>
+          <th class="p-2 text-center">Nominal</th>
+          <th class="p-2 text-center">Tipe</th>
+          <th class="p-2 text-center">Status</th>
+          <th class="p-2 text-center">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="dataTable"></tbody>
+    </table>
   </div>
 </div>
 
@@ -129,7 +97,15 @@
 
 <script>
 // Firebase Init
-const firebaseConfig = { apiKey: "AIzaSyDpPEkKbEt6b_v2OWlBfGuaVQpBg2-RWR4", authDomain: "cwu-gen-2.firebaseapp.com", databaseURL: "https://cwu-gen-2-default-rtdb.firebaseio.com", projectId: "cwu-gen-2", storageBucket: "cwu-gen-2.appspot.com", messagingSenderId: "40585612014", appId: "1:40585612014:web:c88141fee369aca68181ff" };
+const firebaseConfig = { 
+  apiKey: "AIzaSyDpPEkKbEt6b_v2OWlBfGuaVQpBg2-RWR4", 
+  authDomain: "cwu-gen-2.firebaseapp.com", 
+  databaseURL: "https://cwu-gen-2-default-rtdb.firebaseio.com", 
+  projectId: "cwu-gen-2", 
+  storageBucket: "cwu-gen-2.appspot.com", 
+  messagingSenderId: "40585612014", 
+  appId: "1:40585612014:web:c88141fee369aca68181ff" 
+};
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -137,10 +113,14 @@ const form = document.getElementById("formData");
 const table = document.getElementById("dataTable");
 const info = document.getElementById("info");
 const divisiSelect = document.getElementById("divisi");
+const searchInput = document.getElementById("searchInput");
 
-const kuota = { "Ketua Umum":1,"Wakil Ketua Umum":1,"Bendahara Umum":2,"Sekretaris Umum":2,"Medinfo":10,"Networking":14,"Kewirausahaan":12,"Inbis":12,"Demis":10 };
+const kuota = { 
+  "Ketua Umum":1,"Wakil Ketua Umum":1,"Bendahara Umum":2,"Sekretaris Umum":2,
+  "Medinfo":10,"Networking":14,"Kewirausahaan":12,"Inbis":12,"Demis":10 
+};
 
-// Update kuota dan disable divisi penuh
+// Update kuota
 function updateKuota(){
   db.ref("keuangan").once("value", snap=>{
     const data = snap.val()||{};
@@ -152,14 +132,14 @@ function updateKuota(){
       if(kuota[opt.value]){
         const used = count[opt.value]||0;
         opt.disabled = used>=kuota[opt.value];
-        opt.textContent = used>=kuota[opt.value]?`${opt.value} (Penuh)`: `${opt.value} (${kuota[opt.value]-used} slot tersisa)`;
+        opt.textContent = used>=kuota[opt.value]?`${opt.value} (Penuh)`:`${opt.value} (${kuota[opt.value]-used} slot tersisa)`;
       }
     });
   });
 }
 updateKuota();
 
-// Submit Form
+// Submit form
 form.addEventListener("submit", e=>{
   e.preventDefault();
   const nama=document.getElementById("nama").value.trim();
@@ -170,59 +150,102 @@ form.addEventListener("submit", e=>{
   const tipe=document.querySelector("input[name='tipe']:checked")?.value;
   const status=document.getElementById("status").value;
   if(!tipe||!divisi||!angkatan) return alert("Lengkapi semua field!");
-  db.ref("keuangan").push({ nama, divisi, prodi, angkatan, nominal, tipe, status });
-  form.reset(); showInfo("Data berhasil disimpan!");
+  
+  const newData = { nama, divisi, prodi, angkatan, nominal, tipe, status, updatedAt: Date.now() };
+  db.ref("keuangan").push(newData);
+  
+  form.reset(); 
+  info.textContent="Data berhasil disimpan!";
+  info.classList.remove("hidden");
+  setTimeout(()=>info.classList.add("hidden"),2000);
   updateKuota();
 });
 
-// Show info
-function showInfo(txt){
-  info.textContent=txt;
-  info.classList.remove("hidden");
-  setTimeout(()=>info.classList.add("hidden"),2000);
-}
-
-// Render Table
-db.ref("keuangan").on("value", snap=>{
-  const data=snap.val()||{};
-  table.innerHTML="";
-  Object.entries(data).forEach(([id,d])=>{
-    const row=document.createElement("tr");
-    row.className="border-b hover:bg-blue-50 transition-colors duration-200";
+// Render table
+function renderTable(dataObj){
+  table.innerHTML = "";
+  const arr = Object.entries(dataObj).map(([id,d]) => ({id, ...d}));
+  arr.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+  arr.forEach(d=>{
+    const row = document.createElement("tr");
+    row.className = "border-b hover:bg-blue-50 transition-colors duration-200";
     row.innerHTML=`
-      <td class='p-2'>${d.nama}</td>
-      <td class='p-2'>${d.divisi}</td>
-      <td class='p-2'>${d.prodi}-${d.angkatan}</td>
-      <td class='p-2 text-center'>Rp ${d.nominal.toLocaleString()}</td>
-      <td class='p-2 text-center'>${d.tipe.replace("_","+")}</td>
-      <td class='p-2 text-center font-semibold'>
-        <span class='px-2 py-1 rounded text-xs ${d.status==="Lunas"?"bg-green-200 text-green-800":"bg-red-200 text-red-800"}'>${d.status}</span>
+      <td class="p-2">${d.nama}</td>
+      <td class="p-2">${d.divisi}</td>
+      <td class="p-2">${d.prodi}-${d.angkatan}</td>
+      <td class="p-2 text-center">Rp ${d.nominal.toLocaleString()}</td>
+      <td class="p-2 text-center">${d.tipe.replace("_","+")}</td>
+      <td class="p-2 text-center font-semibold">
+        <span class="px-2 py-1 rounded text-xs ${d.status==="Lunas"?"bg-green-200 text-green-800":"bg-red-200 text-red-800"}">${d.status}</span>
       </td>
-      <td class='p-2 text-center space-x-1'>
-        <button class='bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs' onclick="openEdit('${id}')">Edit</button>
-        <button class='bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs' onclick="confirmDelete('${id}')">Hapus</button>
-      </td>`;
+      <td class="p-2 text-center space-x-1 flex justify-center gap-1 flex-wrap">
+        <button class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs" onclick="editData('${d.id}')">Edit</button>
+        <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs" onclick="deleteData('${d.id}')">Hapus</button>
+      </td>
+    `;
     table.appendChild(row);
   });
   updateKuota();
+}
+
+// Firebase listener
+db.ref("keuangan").on("value", snap=>{
+  const data = snap.val()||{};
+  renderTable(data);
 });
 
-// Konfirmasi hapus
-function confirmDelete(id){
+// Fungsi hapus
+function deleteData(id){
   if(confirm("⚠️ Yakin ingin menghapus data ini?")){
-    firebase.database().ref('keuangan/'+id).remove();
-    showInfo("Data berhasil dihapus!");
+    db.ref('keuangan/'+id).remove();
+    info.textContent="Data berhasil dihapus!";
+    info.classList.remove("hidden");
+    setTimeout(()=>info.classList.add("hidden"),2000);
     updateKuota();
   }
 }
 
 // Modal edit
 let editID=null;
-function openEdit(id){
+const editModal = document.createElement("div");
+editModal.className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4";
+editModal.innerHTML=`
+<div class="bg-white rounded-xl shadow-2xl p-6 w-full sm:w-96 relative">
+  <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2">✏️ Edit Data</h2>
+  <form id="editForm" class="space-y-3">
+    <input id="editNama" type="text" class="w-full p-2 border rounded-lg" required>
+    <input id="editProdi" type="text" class="w-full p-2 border rounded-lg" required>
+    <select id="editAngkatan" class="w-full p-2 border rounded-lg" required>
+      <option value="">Pilih Angkatan</option>
+      <option value="21">2021</option>
+      <option value="22">2022</option>
+      <option value="23">2023</option>
+      <option value="24">2024</option>
+      <option value="25">2025</option>
+    </select>
+    <select id="editDivisi" class="w-full p-2 border rounded-lg" required></select>
+    <input id="editNominal" type="number" class="w-full p-2 border rounded-lg" required>
+    <div class="space-y-2">
+      <label class="flex items-center"><input type="radio" name="editTipe" value="partisipasi_makan" class="mr-2"> Partisipasi + Makan</label>
+      <label class="flex items-center"><input type="radio" name="editTipe" value="full" class="mr-2"> Full (Partisipasi + Makan + Kas)</label>
+    </div>
+    <select id="editStatus" class="w-full p-2 border rounded-lg">
+      <option value="Belum Lunas">Belum Lunas</option>
+      <option value="Lunas">Lunas</option>
+    </select>
+    <div class="flex justify-between pt-3">
+      <button type="button" onclick="closeModal()" class="bg-gray-400 text-white px-3 py-1 rounded-lg hover:bg-gray-500">Batal</button>
+      <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Simpan</button>
+    </div>
+  </form>
+</div>`;
+document.body.appendChild(editModal);
+
+// Open modal edit
+function editData(id){
   editID=id;
   document.body.classList.add("modal-open");
-  const modal=document.getElementById("editModal");
-  modal.classList.remove("hidden");
+  editModal.classList.remove("hidden");
   db.ref("keuangan/"+id).once("value", snap=>{
     const d=snap.val();
     editNama.value=d.nama;
@@ -238,24 +261,39 @@ function openEdit(id){
 
 function closeModal(){
   document.body.classList.remove("modal-open");
-  document.getElementById("editModal").classList.add("hidden");
+  editModal.classList.add("hidden");
 }
 
+// Submit modal edit
 document.getElementById("editForm").addEventListener("submit", e=>{
   e.preventDefault();
-  const data={
-    nama:editNama.value.trim(),
-    prodi:editProdi.value.trim(),
-    angkatan:editAngkatan.value,
-    divisi:editDivisi.value,
-    nominal:parseInt(editNominal.value)||0,
-    tipe:document.querySelector("input[name='editTipe']:checked")?.value,
-    status:editStatus.value
+  const data = {
+    nama: editNama.value.trim(),
+    prodi: editProdi.value.trim(),
+    angkatan: editAngkatan.value,
+    divisi: editDivisi.value,
+    nominal: parseInt(editNominal.value)||0,
+    tipe: document.querySelector("input[name='editTipe']:checked")?.value,
+    status: editStatus.value,
+    updatedAt: Date.now()
   };
   db.ref("keuangan/"+editID).update(data);
   closeModal();
-  showInfo("Data berhasil diperbarui!");
+  info.textContent="Data berhasil diperbarui!";
+  info.classList.remove("hidden");
+  setTimeout(()=>info.classList.add("hidden"),2000);
   updateKuota();
+});
+
+// PENCARIAN REALTIME
+searchInput.addEventListener("input", () => {
+  const filter = searchInput.value.toLowerCase();
+  const rows = table.querySelectorAll("tr");
+  rows.forEach(row => {
+    const nama = row.cells[0]?.textContent.toLowerCase() || "";
+    const divisi = row.cells[1]?.textContent.toLowerCase() || "";
+    row.style.display = (nama.includes(filter) || divisi.includes(filter)) ? "" : "none";
+  });
 });
 </script>
 </body>
