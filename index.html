@@ -1,300 +1,881 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Keuangan CWU</title>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<style>
-body.modal-open { overflow: hidden; }
-body { font-family: 'Inter', sans-serif; }
-@media (max-width: 768px){
-  header h1 { font-size: 1.3rem; }
-  header p { font-size: 0.8rem; }
-  table th, table td { font-size: 0.8rem; padding: 6px !important; }
-  .w-96 { width: 90% !important; }
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard CWU Gen 2 - Input Terintegrasi & Hasil Akhir Ringkas</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
+    <style>
+        /* CSS Dasar tetap sama, hanya menambahkan style untuk tombol Aksi */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #008CBA;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            padding: 30px;
+            max-width: 1400px;
+            margin: 20px auto;
+        }
+        .form-section, .table-section {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 350px;
+            margin-bottom: 30px;
+        }
+        .input-group-row {
+            display: flex;
+            gap: 20px;
+        }
+        .input-group-row > .form-group {
+            flex: 1;
+        }
+        .table-section {
+            flex-basis: 100%; 
+            min-width: 100%;
+            overflow-x: auto; 
+        }
+        h2 {
+            color: #008CBA;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        hr.dashed { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
+        .form-group { margin-bottom: 15px; }
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1em;
+            transition: border-color 0.3s; /* Tambahkan transisi untuk border */
+        }
+        
+        /* Aksi dan Tombol */
+        button {
+            background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; margin-top: 10px; width: 100%;
+            transition: background-color 0.3s;
+        }
+        #addItemBtn { background-color: #28a745; }
+        .remove-item-btn { background-color: #dc3545; width: auto; }
+        .action-btn { 
+            padding: 5px 10px; 
+            margin: 2px 0;
+            width: auto;
+            font-size: 0.8em;
+            display: block; 
+        }
+        .edit-btn { background-color: orange; }
+        .delete-btn { background-color: #dc3545; }
+        .filter-btn {
+            background-color: #007bff; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; margin-right: 5px; width: auto; font-size: 0.9em; margin-top: 0;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px 8px; text-align: left; font-size: 0.85em; }
+        th { background-color: #e3f2fd; color: #333; font-weight: 700; }
+        .item-list-cell { white-space: pre-wrap; max-width: 200px; }
+        #jabatanGroup { display: none; background-color: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        
+        /* Fitur Pencarian */
+        .search-container { margin-bottom: 15px; }
+        #searchInput { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        
+        /* Status Color */
+        .red-status-table { color: #dc3545; font-weight: bold; }
+        
+        /* Pewarnaan Merah/Hijau di Kolom Tertentu (BARU/Diperbarui) */
+        .cell-red-bg { background-color: #ffdddd; } /* Merah muda */
+        .cell-green-bg { background-color: #ddffdd; } /* Hijau muda */
+        .status-indicator { display: block; font-size: 0.9em; margin-top: 5px; font-weight: bold; }
+
+    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-blue-200 min-h-screen">
+<body>
 
-<!-- HEADER -->
-<header class="bg-blue-700 text-white py-4 shadow-lg text-center sticky top-0 z-10">
-  <h1 class="text-2xl font-bold tracking-wide">💼 Admin Keuangan CWU</h1>
-  <p class="text-sm text-blue-100">Input dan Kelola Data Pembayaran</p>
-</header>
+    <header>
+        <h1>Dashboard CWU Gen 2</h1>
+    </header>
 
-<!-- FORM INPUT CENTER -->
-<div class="max-w-3xl mx-auto mt-6 bg-white rounded-2xl p-6 shadow-lg transition-all duration-300 hover:shadow-xl">
-  <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2 text-center">📝 Form Input</h2>
-  <form id="formData" class="space-y-3">
-    <input id="nama" type="text" placeholder="Nama Lengkap" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-    <select id="divisi" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-      <option value="">Pilih Divisi</option>
-      <option value="Ketua Umum">Ketua Umum (1)</option>
-      <option value="Wakil Ketua Umum">Wakil Ketua Umum (1)</option>
-      <option value="Bendahara Umum">Bendahara Umum (2)</option>
-      <option value="Sekretaris Umum">Sekretaris Umum (2)</option>
-      <option value="Medinfo">Medinfo (10)</option>
-      <option value="Networking">Networking (14)</option>
-      <option value="Kewirausahaan">Kewirausahaan (12)</option>
-      <option value="Inbis">Inbis (12)</option>
-      <option value="Demis">Demis (10)</option>
-    </select>
-    <input id="prodi" type="text" placeholder="Prodi" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-    <select id="angkatan" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-      <option value="">Pilih Angkatan</option>
-      <option value="21">2021</option>
-      <option value="22">2022</option>
-      <option value="23">2023</option>
-      <option value="24">2024</option>
-      <option value="25">2025</option>
-    </select>
-    <input id="nominal" type="number" placeholder="Nominal (Rp)" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" required>
-    <div class="space-y-2">
-      <label class="flex items-center"><input type="radio" name="tipe" value="partisipasi_makan" class="mr-2"> Partisipasi + Makan</label>
-      <label class="flex items-center"><input type="radio" name="tipe" value="full" class="mr-2"> Full (Partisipasi + Makan + Kas)</label>
+    <div class="container">
+        <section class="form-section" id="integrated-form">
+            <h2>📝 Input Data Anggota & Pesanan (Satu Langkah)</h2>
+            
+            <form id="integratedForm">
+                <input type="hidden" id="editKeyAnggota" value="">
+                <input type="hidden" id="editKeyPesanan" value="">
+
+                
+                <h3>1. Data Anggota (Wajib diisi)</h3>
+                <hr class="dashed">
+                <div class="form-group"><label for="nama">Nama:</label><input type="text" id="nama" required></div>
+                
+                <div class="input-group-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="divisi">Divisi:</label>
+                        <select id="divisi" required onchange="updateDivisiFields()">
+                            <option value="">Pilih Divisi</option>
+                            <option value="Bpi">Bpi</option>
+                            <option value="Medinfo">Medinfo</option>
+                            <option value="Network">Network</option>
+                            <option value="Kwu">Kwu</option>
+                            <option value="Demis">Demis</option>
+                            <option value="Inbis">Inbis</option> 
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Kuota Divisi (<span id="currentCount">0</span>/<span id="maxQuota">0</span>):</label>
+                        <span id="kuotaDisplay" style="font-weight: bold; display: block; font-size: 1.2em;">-</span>
+                    </div>
+                </div>
+
+                <div id="jabatanGroup">
+                    <div class="form-group">
+                        <label for="jabatanBPI">Jabatan BPI:</label>
+                        <select id="jabatanBPI">
+                            <option value="">Pilih Jabatan</option>
+                            <option value="Ketua">Ketua</option>
+                            <option value="Wakil">Wakil</option>
+                            <option value="Sekretaris 1">Sekretaris 1</option>
+                            <option value="Sekretaris 2">Sekretaris 2</option>
+                            <option value="Bendahara 1">Bendahara 1</option>
+                            <option value="Bendahara 2">Bendahara 2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group-row">
+                    <div class="form-group">
+                        <label for="prodi">Program Studi (Prodi):</label>
+                        <input type="text" id="prodi" required placeholder="Contoh: Informatika">
+                    </div>
+                    <div class="form-group" style="flex: 0.5;">
+                        <label for="angkatan">Angkatan:</label>
+                        <select id="angkatan" required>
+                            <option value="">Pilih Tahun</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group-row">
+                    <div class="form-group">
+                        <label for="welpart">Kontribusi Welpart (Rp):</label>
+                        <input type="number" id="welpart" required min="0" oninput="checkWelpart()">
+                        <span id="welpartStatus" class="status-indicator"></span>
+                    </div>
+                    <div class="form-group" id="kasGroup">
+                        <label for="kas">Kontribusi Kas (Rp):</label>
+                        <input type="number" id="kas" required min="0" oninput="checkKas()">
+                        <span id="kasStatus" class="status-indicator"></span>
+                    </div>
+                </div>
+                
+                <h3 style="margin-top: 30px;">2. Detail Pesanan (Minimal 1 Item)</h3>
+                <hr class="dashed">
+                
+                <div id="item-list">
+                    <div class="item-group" id="item_1">
+                        <h4>Item 1</h4>
+                        <div class="input-group-row">
+                            <div class="form-group"><label>Makanan:</label><input type="text" class="nama-makan" required></div>
+                            <div class="form-group"><label>Minuman:</label><input type="text" class="nama-minum" required></div>
+                            <div class="form-group" style="flex: 0.5;"><label>Harga (Rp):</label><input type="number" class="harga-item" required min="0" oninput="calculateTotal()"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" id="addItemBtn">➕ Tambah Item Pesanan</button>
+
+                <div class="input-group-row" style="margin-top: 20px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="tagihanAkhir">Tagihan Total Pesanan:</label>
+                        <input type="text" id="tagihanAkhir" readonly style="font-weight: bold; background-color: #eee;">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="hasilAkhirInput">Hasil Akhir (Rp):</label>
+                        <input type="number" id="hasilAkhirInput" required placeholder="Input Hasil Akhir Manual">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="status">Status Pembayaran:</label>
+                    <select id="status" required>
+                        <option value="lunas">Lunas</option>
+                        <option value="tidak">Tidak Lunas</option>
+                    </select>
+                </div>
+
+                <button type="submit" id="submitBtn" style="background-color: #4CAF50;">💾 Simpan Anggota & Pesanan (Selesai)</button>
+            </form>
+        </section>
     </div>
-    <select id="status" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
-      <option value="Belum Lunas">Belum Lunas</option>
-      <option value="Lunas">Lunas</option>
-    </select>
-    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.02]">💾 Simpan Data</button>
-  </form>
-  <p id="info" class="text-center mt-3 text-green-600 hidden">Data berhasil disimpan!</p>
-</div>
+    
+    <div class="container">
+        <section class="table-section">
+            <h2>📊 Laporan Gabungan Hasil Akhir</h2>
+            
+            <div class="search-container">
+                <label for="searchInput">Cari Data (Nama, Divisi, Prodi):</label>
+                <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Ketik untuk mencari...">
+            </div>
 
-<!-- DATA PEMBAYARAN FULL WIDTH -->
-<div class="max-w-6xl mx-auto mt-6 bg-white rounded-2xl p-6 shadow-lg overflow-x-auto transition-all duration-300 hover:shadow-xl">
-  <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2">📋 Data Pembayaran</h2>
-  
-  <!-- PENCARIAN -->
-  <div class="mb-3 flex gap-2 items-center">
-    <input id="searchInput" type="text" placeholder="Cari Nama atau Divisi..." class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
-  </div>
-  
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm border min-w-[600px]">
-      <thead class="bg-blue-100 text-blue-800">
-        <tr>
-          <th class="p-2 text-left">Nama</th>
-          <th class="p-2 text-left">Divisi</th>
-          <th class="p-2 text-left">Prodi - Akt</th>
-          <th class="p-2 text-center">Nominal</th>
-          <th class="p-2 text-center">Tipe</th>
-          <th class="p-2 text-center">Status</th>
-          <th class="p-2 text-center">Aksi</th>
-        </tr>
-      </thead>
-      <tbody id="dataTable"></tbody>
-    </table>
-  </div>
-</div>
+            <div class="filter-container" style="margin-bottom: 15px;">
+                <label style="font-weight: bold; margin-right: 10px;">Filter Divisi:</label>
+                <button class="filter-btn" data-divisi="" style="background-color: #28a745; color: white;">Semua</button>
+                <button class="filter-btn" data-divisi="Bpi" style="background-color: #007bff;">Bpi</button>
+                <button class="filter-btn" data-divisi="Medinfo" style="background-color: #007bff;">Medinfo</button>
+                <button class="filter-btn" data-divisi="Kwu" style="background-color: #007bff;">Kwu</button>
+                <button class="filter-btn" data-divisi="Network" style="background-color: #007bff;">Network</button>
+                <button class="filter-btn" data-divisi="Demis" style="background-color: #007bff;">Demis</button>
+                <button class="filter-btn" data-divisi="Inbis" style="background-color: #007bff;">Inbis</button>
+            </div>
 
-<footer class="text-center text-sm text-blue-600 mt-8 mb-4">© 2025 CWU Gen 2 | Admin Panel</footer>
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                <button id="deleteSelectedBtn" style="background-color: #dc3545; width: auto; display: none; margin-top: 0;">🗑️ Hapus yang Dipilih (<span id="selectedCount">0</span>)</button>
+                <button id="undoDeleteBtn" style="background-color: #ffc107; width: auto; display: none; margin-top: 0; color: #333;">↩️ Undo Hapus</button>
+            </div>
+
+
+            <table id="finalDataTable">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllCheckbox"></th> 
+                        <th>No.</th>
+                        <th>Nama</th>
+                        <th>Div</th>
+                        <th>Prodi-Akt</th>
+                        <th>Pesanan</th>
+                        <th>Total Pesanan</th>
+                        <th>Welpart</th>
+                        <th>Kas</th>
+                        <th>Hasil Akhir</th> 
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="12" style="text-align: center;">Memuat data gabungan...</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
 
 <script>
-// Firebase Init
-const firebaseConfig = { 
-  apiKey: "AIzaSyDpPEkKbEt6b_v2OWlBfGuaVQpBg2-RWR4", 
-  authDomain: "cwu-gen-2.firebaseapp.com", 
-  databaseURL: "https://cwu-gen-2-default-rtdb.firebaseio.com", 
-  projectId: "cwu-gen-2", 
-  storageBucket: "cwu-gen-2.appspot.com", 
-  messagingSenderId: "40585612014", 
-  appId: "1:40585612014:web:c88141fee369aca68181ff" 
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+    // --- 1. KONFIGURASI FIREBASE ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyDpPEkKbEt6b_v2OWlBfGuaVQpBg2-RWR4",
+        authDomain: "cwu-gen-2.firebaseapp.com",
+        databaseURL: "https://cwu-gen-2-default-rtdb.firebaseio.com",
+        projectId: "cwu-gen-2",
+        storageBucket: "cwu-gen-2.appspot.com",
+        messagingSenderId: "40585612014",
+        appId: "1:40585612014:web:c88141fee3699aca68181ff",
+        measurementId: "G-S8D7DFJ1G3"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // --- 2. VARIABEL & DOM ELEMENTS ---
+    // PENAMBAHAN DIVISI INBIS (Kuota 12)
+    const kuotaDivisi = { Bpi: 6, Medinfo: 10, Network: 14, Kwu: 12, Demis: 10, Inbis: 12 }; 
+    // STANDAR MINIMUM WELPART & KAS (Disarankan)
+    const minWelpart = 7000; // Contoh: Minimum Welpart 20.000
+    const minKas = 10000; // Contoh: Minimum Kas 10.000
 
-const form = document.getElementById("formData");
-const table = document.getElementById("dataTable");
-const info = document.getElementById("info");
-const divisiSelect = document.getElementById("divisi");
-const searchInput = document.getElementById("searchInput");
+    let currentDivisiCounts = {}; 
+    const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
 
-const kuota = { 
-  "Ketua Umum":1,"Wakil Ketua Umum":1,"Bendahara Umum":2,"Sekretaris Umum":2,
-  "Medinfo":10,"Networking":14,"Kewirausahaan":12,"Inbis":12,"Demis":10 
-};
+    const finalTableBody = document.querySelector('#finalDataTable tbody');
+    const integratedForm = document.getElementById('integratedForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const divisiSelect = document.getElementById('divisi');
+    const welpartInput = document.getElementById('welpart');
+    const kasInput = document.getElementById('kas');
+    const editKeyAnggotaInput = document.getElementById('editKeyAnggota');
+    const editKeyPesananInput = document.getElementById('editKeyPesanan');
+    const hasilAkhirInput = document.getElementById('hasilAkhirInput'); 
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const undoDeleteBtn = document.getElementById('undoDeleteBtn');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const welpartStatusSpan = document.getElementById('welpartStatus');
+    const kasStatusSpan = document.getElementById('kasStatus');
 
-// Update kuota
-function updateKuota(){
-  db.ref("keuangan").once("value", snap=>{
-    const data = snap.val()||{};
-    const count = {};
-    Object.values(data).forEach(d=>{
-      if(kuota[d.divisi]) count[d.divisi]=(count[d.divisi]||0)+1;
+    let itemCounter = 1;
+    let combinedData = []; 
+    let currentFilterDivisi = '';
+    let deletedItemsCache = []; // Untuk fungsi Undo
+
+    // --- 3. FUNGSI UTAMA (LOGIKA BARU) ---
+
+    // FUNGSI BARU: Cek Status Welpart (Merah/Hijau)
+    function checkWelpart() {
+        const val = parseInt(welpartInput.value) || 0;
+        const isSesuai = val >= minWelpart;
+
+        welpartStatusSpan.textContent = isSesuai 
+            ? '✅ Sudah Sesuai' 
+            : `❌ Kurang dari ${formatter.format(minWelpart)}`;
+        welpartStatusSpan.style.color = isSesuai ? 'green' : 'red';
+        welpartInput.style.borderColor = isSesuai ? 'green' : 'red';
+    }
+
+    // FUNGSI BARU: Cek Status Kas (Merah/Hijau)
+    function checkKas() {
+        const val = parseInt(kasInput.value) || 0;
+        const isSesuai = val >= minKas;
+
+        kasStatusSpan.textContent = isSesuai 
+            ? '✅ Sudah Sesuai' 
+            : `❌ Kurang dari ${formatter.format(minKas)}`;
+        kasStatusSpan.style.color = isSesuai ? 'green' : 'red';
+        kasInput.style.borderColor = isSesuai ? 'green' : 'red';
+    }
+
+    welpartInput.oninput = checkWelpart;
+    kasInput.oninput = checkKas;
+
+    // FUNGSI BARU: Memperbarui Kuota Divisi dan Blokir Pilihan yang Penuh
+    function updateDivisiFields(isEditMode = false, currentDivisi = null) {
+        const selectedDivisi = divisiSelect.value;
+        const currentCount = currentDivisiCounts[selectedDivisi] || 0;
+        const maxQuota = kuotaDivisi[selectedDivisi] || 0;
+
+        document.getElementById('currentCount').textContent = currentCount;
+        document.getElementById('maxQuota').textContent = maxQuota;
+        document.getElementById('kuotaDisplay').textContent = selectedDivisi ? `${currentCount}/${maxQuota}` : '-';
+
+        // Tampilkan/Sembunyikan Jabatan BPI
+        document.getElementById('jabatanGroup').style.display = selectedDivisi === 'Bpi' ? 'block' : 'none';
+
+        // LOGIKA BLOKIR DIVISI
+        divisiSelect.querySelectorAll('option').forEach(option => {
+            const div = option.value;
+            if (div && kuotaDivisi[div]) {
+                const count = currentDivisiCounts[div] || 0;
+                const quota = kuotaDivisi[div];
+                // Jika sedang mode edit, jangan blokir divisi yang sedang diedit (anggota tsb)
+                const isCurrentEditDivisi = isEditMode && div === currentDivisi; 
+                const isFull = count >= quota && !isCurrentEditDivisi;
+                
+                option.disabled = isFull;
+                option.textContent = isFull ? `${div} (PENUH: ${quota})` : div;
+            }
+        });
+    }
+
+    divisiSelect.addEventListener('change', () => updateDivisiFields());
+
+
+    // Fungsi Generik untuk Simpan/Update
+    async function saveOrUpdateToFirebase(path, key, data, formName) {
+        try {
+            if (key) {
+                await database.ref(`${path}/${key}`).set(data);
+                return `✅ Data ${formName} berhasil **diperbarui**.`;
+            } else {
+                const newRef = database.ref(path).push(data);
+                return newRef.key;
+            }
+        } catch (error) {
+            console.error('Firebase Save/Update Error:', error);
+            throw new Error(`❌ Gagal menyimpan/memperbarui data ${formName}.`);
+        }
+    }
+    
+    /**
+     * FUNGSI: Mengembalikan formulir ke keadaan semula (Pulih/Bersih)
+     */
+    function resetIntegratedForm() {
+        integratedForm.reset();
+        editKeyAnggotaInput.value = '';
+        editKeyPesananInput.value = '';
+        submitBtn.textContent = '💾 Simpan Anggota & Pesanan (Selesai)';
+        
+        // Reset Item List ke Item 1 Kosong
+        itemCounter = 1;
+        document.getElementById('item-list').innerHTML = `
+            <div class="item-group" id="item_1">
+                <h4>Item 1</h4>
+                <div class="input-group-row">
+                    <div class="form-group"><label>Makanan:</label><input type="text" class="nama-makan" required></div>
+                    <div class="form-group"><label>Minuman:</label><input type="text" class="nama-minum" required></div>
+                    <div class="form-group" style="flex: 0.5;"><label>Harga (Rp):</label><input type="number" class="harga-item" required min="0" oninput="calculateTotal()"></div>
+                </div>
+            </div>
+        `;
+        calculateTotal();
+        // Reset status dan border warna
+        welpartInput.style.borderColor = '#ddd'; 
+        kasInput.style.borderColor = '#ddd'; 
+        welpartStatusSpan.textContent = '';
+        kasStatusSpan.textContent = '';
+        updateDivisiFields(); 
+    }
+
+    // FUNGSI INTI: Handle Submit Form Terintegrasi (Simpan/Edit)
+    integratedForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const isEditMode = !!editKeyAnggotaInput.value;
+        const selectedDivisi = divisiSelect.value;
+        
+        // Cek Kuota (Hanya mode Tambah Baru)
+        if (!isEditMode) {
+            const currentCount = currentDivisiCounts[selectedDivisi] || 0;
+            const maxQuota = kuotaDivisi[selectedDivisi] || 0;
+            if (currentCount >= maxQuota) {
+                alert(`❌ Gagal menyimpan! Kuota untuk divisi ${selectedDivisi} (${maxQuota}) sudah penuh.`);
+                return;
+            }
+        }
+
+        // Konfirmasi jika Welpart/Kas di bawah minimum (BARU)
+        if (parseInt(welpartInput.value) < minWelpart || parseInt(kasInput.value) < minKas) {
+             if (!confirm('Kontribusi Welpart atau Kas belum mencapai minimum yang disarankan. Lanjutkan simpan data?')) {
+                return; 
+             }
+        }
+
+        const namaAnggota = document.getElementById('nama').value.trim();
+        const tahunAngkatan = document.getElementById('angkatan').value.slice(-2);
+        
+        const dataAnggota = {
+            nama: namaAnggota,
+            divisi: selectedDivisi,
+            jabatan: selectedDivisi === 'Bpi' ? document.getElementById('jabatanBPI').value : null,
+            prodiAkt: `${document.getElementById('prodi').value.trim()}-${tahunAngkatan}`,
+            welpart: parseInt(welpartInput.value) || 0,
+            kas: parseInt(kasInput.value) || 0,
+            hasilAkhir: parseInt(hasilAkhirInput.value) || 0, // Hasil Akhir Manual
+        };
+
+        const items = [];
+        document.querySelectorAll('#item-list .item-group').forEach(group => {
+            const harga = parseInt(group.querySelector('.harga-item').value) || 0;
+            items.push({
+                makanan: group.querySelector('.nama-makan').value.trim(),
+                minuman: group.querySelector('.nama-minum').value.trim(),
+                harga: harga
+            });
+        });
+
+        const totalTagihan = items.reduce((sum, item) => sum + item.harga, 0);
+
+        const dataPesanan = {
+            pemesan: namaAnggota,
+            items: items,
+            tagihan_akhir_total: totalTagihan,
+            status_pembayaran: document.getElementById('status').value,
+            timestamp: new Date().toISOString() 
+        };
+        
+        try {
+            let anggotaKeyToUpdate = isEditMode ? editKeyAnggotaInput.value : null;
+
+            const resAnggota = await saveOrUpdateToFirebase('anggota', anggotaKeyToUpdate, dataAnggota, 'Anggota');
+            await saveOrUpdateToFirebase('pesanan', editKeyPesananInput.value, dataPesanan, 'Pesanan');
+
+            if (!isEditMode) {
+                anggotaKeyToUpdate = resAnggota; 
+                alert(`Data berhasil disimpan!`);
+            } else {
+                alert(`Data ${namaAnggota} berhasil diperbarui!`);
+            }
+
+            resetIntegratedForm();
+            loadFinalTable(true, anggotaKeyToUpdate); 
+
+        } catch (error) {
+            alert(error.message);
+        }
     });
-    [...divisiSelect.options].forEach(opt=>{
-      if(kuota[opt.value]){
-        const used = count[opt.value]||0;
-        opt.disabled = used>=kuota[opt.value];
-        opt.textContent = used>=kuota[opt.value]?`${opt.value} (Penuh)`:`${opt.value} (${kuota[opt.value]-used} slot tersisa)`;
-      }
+    
+    // FUNGSI HAPUS TUNGGAL
+    window.deleteData = function(anggotaKey, pesananKey, nama) {
+        if (!confirm(`Yakin ingin menghapus data anggota ${nama} dan pesanannya?`)) return;
+        if (!confirm('KONFIRMASI TERAKHIR. DATA AKAN TERHAPUS. Lanjutkan?')) return;
+
+        // Ambil data sebelum dihapus untuk fitur 'Undo'
+        const deletedAnggota = combinedData.find(d => d.anggotaKey === anggotaKey);
+        if (deletedAnggota) {
+            deletedItemsCache.push(deletedAnggota);
+            undoDeleteBtn.style.display = 'inline-block';
+        }
+        
+        try {
+            database.ref(`anggota/${anggotaKey}`).remove();
+            database.ref(`pesanan/${pesananKey}`).remove();
+            alert(`✅ Data ${nama} berhasil dihapus.`);
+            // Pembaruan akan otomatis oleh listener
+        } catch (error) {
+            console.error('Delete Error:', error);
+            alert('❌ Gagal menghapus data.');
+        }
+    }
+
+    // FUNGSI EDIT DATA
+    window.editData = function(anggotaKey, pesananKey) {
+        const data = combinedData.find(d => d.anggotaKey === anggotaKey);
+        if (!data) return alert('Data tidak ditemukan.');
+
+        // 1. Data Anggota
+        editKeyAnggotaInput.value = anggotaKey;
+        document.getElementById('nama').value = data.nama;
+        divisiSelect.value = data.divisi;
+        document.getElementById('prodi').value = data.prodiAkt.split('-')[0];
+        document.getElementById('angkatan').value = '20' + data.prodiAkt.split('-')[1];
+        welpartInput.value = data.welpart;
+        kasInput.value = data.kas;
+        hasilAkhirInput.value = data.hasilAkhir;
+
+        // Panggil untuk update tampilan kuota, status, dan jabatan
+        updateDivisiFields(true, data.divisi);
+        checkWelpart();
+        checkKas();
+        if (data.divisi === 'Bpi' && data.jabatan) {
+            document.getElementById('jabatanBPI').value = data.jabatan;
+        }
+
+        // 2. Data Pesanan
+        editKeyPesananInput.value = pesananKey;
+        document.getElementById('status').value = data.status;
+
+        const itemsContainer = document.getElementById('item-list');
+        itemsContainer.innerHTML = '';
+        itemCounter = 1;
+        
+        // Asumsi data.items ada di object combinedData (Perlu dipastikan saat load data)
+        const pesananData = data.pesanan || []; // Gunakan data pesanan lengkap jika tersedia
+
+        if (pesananData.length === 0 && data.pesananText) {
+             // Jika data.pesanan tidak lengkap, setidaknya buat 1 item kosong agar form tidak error
+             pesananData.push({ makanan: '', minuman: '', harga: 0 }); 
+        }
+
+        (pesananData.items || []).forEach((item) => {
+             itemsContainer.innerHTML += createItemField(itemCounter++, item);
+        });
+
+        calculateTotal();
+
+        submitBtn.textContent = `💾 Perbarui Data ${data.nama}`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // FUNGSI RENDER: Membangun Baris Tabel
+    function createTableRow(data) {
+        const row = document.createElement('tr');
+        
+        // Tentukan warna latar belakang untuk Welpart dan Kas (BARU)
+        const welpartBgClass = data.welpart >= minWelpart ? 'cell-green-bg' : 'cell-red-bg';
+        const kasBgClass = data.kas >= minKas ? 'cell-green-bg' : 'cell-red-bg';
+        
+        // Tentukan warna status pembayaran
+        const statusClass = data.status === 'tidak' ? 'red-status-table' : '';
+        const statusText = data.status === 'lunas' ? 'LUNAS' : 'TIDAK LUNAS';
+        
+        row.innerHTML = `
+            <td><input type="checkbox" class="row-checkbox" data-anggota-key="${data.anggotaKey}" data-pesanan-key="${data.pesananKey}"></td>
+            <td>${data.index}</td>
+            <td>${data.nama}</td>
+            <td>${data.divisi}${data.jabatan ? ` (${data.jabatan})` : ''}</td>
+            <td>${data.prodiAkt}</td>
+            <td class="item-list-cell">${data.pesananText}</td>
+            <td>${formatter.format(data.tagihanTotal)}</td>
+            <td class="${welpartBgClass}">${formatter.format(data.welpart)}</td>
+            <td class="${kasBgClass}">${formatter.format(data.kas)}</td>
+            <td>${formatter.format(data.hasilAkhir)}</td>
+            <td class="${statusClass}">${statusText}</td>
+            <td>
+                <button class="edit-btn action-btn" onclick="editData('${data.anggotaKey}', '${data.pesananKey}')">✏️ Edit</button>
+                <button class="delete-btn action-btn" onclick="deleteData('${data.anggotaKey}', '${data.pesananKey}', '${data.nama}')">🗑️ Hapus</button>
+            </td>
+        `;
+        return row;
+    }
+
+    // FUNGSI UTAMA: Render/Gambar Ulang Tabel
+    function renderFinalTable() {
+        finalTableBody.innerHTML = '';
+        let filteredData = combinedData;
+
+        // Filter Divisi
+        if (currentFilterDivisi) {
+            filteredData = filteredData.filter(item => item.divisi === currentFilterDivisi);
+        }
+
+        // Filter Pencarian
+        const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+        if (searchVal) {
+             filteredData = filteredData.filter(item => 
+                item.nama.toLowerCase().includes(searchVal) ||
+                item.divisi.toLowerCase().includes(searchVal) ||
+                item.prodiAkt.toLowerCase().includes(searchVal)
+            );
+        }
+        
+        if (filteredData.length === 0) {
+            finalTableBody.innerHTML = `<tr><td colspan="12" style="text-align: center;">Tidak ada data yang tersedia atau tidak ditemukan.</td></tr>`;
+            return;
+        }
+
+        filteredData.forEach((data, index) => {
+            data.index = index + 1; 
+            finalTableBody.appendChild(createTableRow(data));
+        });
+        
+        updateSelectionState(); 
+    }
+    
+    // FUNGSI INTI: Muat dan Gabungkan Data dari Firebase (Diperbarui untuk menyimpan detail pesanan)
+    async function loadFinalTable(scrollToTop = false, highlightKey = null) {
+        finalTableBody.innerHTML = '<tr><td colspan="12" style="text-align: center;">Memuat data gabungan...</td></tr>';
+        
+        try {
+            const anggotaSnapshot = await database.ref('anggota').once('value');
+            const pesananSnapshot = await database.ref('pesanan').once('value');
+            
+            const anggotaData = anggotaSnapshot.val() || {};
+            const pesananData = pesananSnapshot.val() || {};
+            
+            combinedData = [];
+            currentDivisiCounts = {}; 
+
+            const pesananMap = {};
+            for (const key in pesananData) {
+                if (pesananData.hasOwnProperty(key)) {
+                    pesananMap[pesananData[key].pemesan] = { ...pesananData[key], pesananKey: key };
+                }
+            }
+            
+            let index = 1;
+            for (const anggotaKey in anggotaData) {
+                if (anggotaData.hasOwnProperty(anggotaKey)) {
+                    const anggota = anggotaData[anggotaKey];
+                    const pesanan = pesananMap[anggota.nama]; 
+                    
+                    currentDivisiCounts[anggota.divisi] = (currentDivisiCounts[anggota.divisi] || 0) + 1;
+
+                    if (pesanan) {
+                        const pesananText = pesanan.items.map(item => `${item.makanan} + ${item.minuman} (${formatter.format(item.harga)})`).join('\n');
+                        
+                        combinedData.push({
+                            index: index++,
+                            anggotaKey: anggotaKey,
+                            pesananKey: pesanan.pesananKey,
+                            nama: anggota.nama,
+                            divisi: anggota.divisi,
+                            jabatan: anggota.jabatan,
+                            prodiAkt: anggota.prodiAkt,
+                            pesananText: pesananText,
+                            tagihanTotal: pesanan.tagihan_akhir_total,
+                            welpart: anggota.welpart,
+                            kas: anggota.kas,
+                            hasilAkhir: anggota.hasilAkhir,
+                            status: pesanan.status_pembayaran,
+                            pesanan: pesanan // Simpan objek pesanan lengkap untuk fungsi edit
+                        });
+                    }
+                }
+            }
+            
+            updateDivisiFields(false); 
+            renderFinalTable(); 
+            
+            if (scrollToTop) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+        } catch (error) {
+            console.error('Gagal memuat data:', error);
+            finalTableBody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: red;">❌ Gagal memuat data dari Firebase. Cek koneksi atau konfigurasi.</td></tr>`;
+        }
+    }
+    
+    // Mulai mendengarkan perubahan data di Firebase (Listener Realtime)
+    database.ref('anggota').on('value', () => loadFinalTable());
+
+
+    // --- 4. FUNGSI PELENGKAP (Item Pesanan, Total, Filter, Delete Massal) ---
+
+    // Membangun Field Item Pesanan
+    function createItemField(id, data = { makanan: '', minuman: '', harga: 0 }) {
+        return `
+            <div class="item-group" id="item_${id}">
+                <h4>Item ${id} <button type="button" class="remove-item-btn" onclick="removeItem('${id}')">Hapus Item</button></h4>
+                <div class="input-group-row">
+                    <div class="form-group"><label>Makanan:</label><input type="text" class="nama-makan" value="${data.makanan}" required></div>
+                    <div class="form-group"><label>Minuman:</label><input type="text" class="nama-minum" value="${data.minuman}" required></div>
+                    <div class="form-group" style="flex: 0.5;"><label>Harga (Rp):</label><input type="number" class="harga-item" value="${data.harga}" required min="0" oninput="calculateTotal()"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Tambah Item Pesanan
+    document.getElementById('addItemBtn').addEventListener('click', () => {
+        itemCounter++;
+        const itemsContainer = document.getElementById('item-list');
+        itemsContainer.insertAdjacentHTML('beforeend', createItemField(itemCounter));
+        calculateTotal();
     });
-  });
-}
-updateKuota();
 
-// Submit form
-form.addEventListener("submit", e=>{
-  e.preventDefault();
-  const nama=document.getElementById("nama").value.trim();
-  const divisi=divisiSelect.value;
-  const prodi=document.getElementById("prodi").value.trim();
-  const angkatan=document.getElementById("angkatan").value.trim();
-  const nominal=parseInt(document.getElementById("nominal").value)||0;
-  const tipe=document.querySelector("input[name='tipe']:checked")?.value;
-  const status=document.getElementById("status").value;
-  if(!tipe||!divisi||!angkatan) return alert("Lengkapi semua field!");
-  
-  const newData = { nama, divisi, prodi, angkatan, nominal, tipe, status, updatedAt: Date.now() };
-  db.ref("keuangan").push(newData);
-  
-  form.reset(); 
-  info.textContent="Data berhasil disimpan!";
-  info.classList.remove("hidden");
-  setTimeout(()=>info.classList.add("hidden"),2000);
-  updateKuota();
-});
+    // Hapus Item Pesanan
+    window.removeItem = function(id) {
+        if (document.querySelectorAll('#item-list .item-group').length > 1) {
+            document.getElementById(`item_${id}`).remove();
+            calculateTotal();
+        } else {
+            alert('Minimal harus ada 1 item pesanan.');
+        }
+    }
 
-// Render table
-function renderTable(dataObj){
-  table.innerHTML = "";
-  const arr = Object.entries(dataObj).map(([id,d]) => ({id, ...d}));
-  arr.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
-  arr.forEach(d=>{
-    const row = document.createElement("tr");
-    row.className = "border-b hover:bg-blue-50 transition-colors duration-200";
-    row.innerHTML=`
-      <td class="p-2">${d.nama}</td>
-      <td class="p-2">${d.divisi}</td>
-      <td class="p-2">${d.prodi}-${d.angkatan}</td>
-      <td class="p-2 text-center">Rp ${d.nominal.toLocaleString()}</td>
-      <td class="p-2 text-center">${d.tipe.replace("_","+")}</td>
-      <td class="p-2 text-center font-semibold">
-        <span class="px-2 py-1 rounded text-xs ${d.status==="Lunas"?"bg-green-200 text-green-800":"bg-red-200 text-red-800"}">${d.status}</span>
-      </td>
-      <td class="p-2 text-center space-x-1 flex justify-center gap-1 flex-wrap">
-        <button class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs" onclick="editData('${d.id}')">Edit</button>
-        <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs" onclick="deleteData('${d.id}')">Hapus</button>
-      </td>
-    `;
-    table.appendChild(row);
-  });
-  updateKuota();
-}
+    // Hitung Total Pesanan
+    window.calculateTotal = function() {
+        let total = 0;
+        document.querySelectorAll('.harga-item').forEach(input => {
+            total += parseInt(input.value) || 0;
+        });
+        document.getElementById('tagihanAkhir').value = formatter.format(total);
+    }
+    
+    // Pencarian Tabel
+    window.searchTable = function() {
+        renderFinalTable(); 
+    }
 
-// Firebase listener
-db.ref("keuangan").on("value", snap=>{
-  const data = snap.val()||{};
-  renderTable(data);
-});
+    // Filter Tabel
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilterDivisi = btn.getAttribute('data-divisi');
+            filterButtons.forEach(b => b.style.backgroundColor = '#007bff');
+            btn.style.backgroundColor = '#28a745';
+            renderFinalTable();
+        });
+    });
 
-// Fungsi hapus
-function deleteData(id){
-  if(confirm("⚠️ Yakin ingin menghapus data ini?")){
-    db.ref('keuangan/'+id).remove();
-    info.textContent="Data berhasil dihapus!";
-    info.classList.remove("hidden");
-    setTimeout(()=>info.classList.add("hidden"),2000);
-    updateKuota();
-  }
-}
+    // Fitur Select All & Delete Selected
+    selectAllCheckbox.addEventListener('change', (e) => {
+        document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+            checkbox.checked = e.target.checked;
+        });
+        updateSelectionState();
+    });
 
-// Modal edit
-let editID=null;
-const editModal = document.createElement("div");
-editModal.className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4";
-editModal.innerHTML=`
-<div class="bg-white rounded-xl shadow-2xl p-6 w-full sm:w-96 relative">
-  <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2">✏️ Edit Data</h2>
-  <form id="editForm" class="space-y-3">
-    <input id="editNama" type="text" class="w-full p-2 border rounded-lg" required>
-    <input id="editProdi" type="text" class="w-full p-2 border rounded-lg" required>
-    <select id="editAngkatan" class="w-full p-2 border rounded-lg" required>
-      <option value="">Pilih Angkatan</option>
-      <option value="21">2021</option>
-      <option value="22">2022</option>
-      <option value="23">2023</option>
-      <option value="24">2024</option>
-      <option value="25">2025</option>
-    </select>
-    <select id="editDivisi" class="w-full p-2 border rounded-lg" required></select>
-    <input id="editNominal" type="number" class="w-full p-2 border rounded-lg" required>
-    <div class="space-y-2">
-      <label class="flex items-center"><input type="radio" name="editTipe" value="partisipasi_makan" class="mr-2"> Partisipasi + Makan</label>
-      <label class="flex items-center"><input type="radio" name="editTipe" value="full" class="mr-2"> Full (Partisipasi + Makan + Kas)</label>
-    </div>
-    <select id="editStatus" class="w-full p-2 border rounded-lg">
-      <option value="Belum Lunas">Belum Lunas</option>
-      <option value="Lunas">Lunas</option>
-    </select>
-    <div class="flex justify-between pt-3">
-      <button type="button" onclick="closeModal()" class="bg-gray-400 text-white px-3 py-1 rounded-lg hover:bg-gray-500">Batal</button>
-      <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Simpan</button>
-    </div>
-  </form>
-</div>`;
-document.body.appendChild(editModal);
+    document.getElementById('finalDataTable').addEventListener('change', (e) => {
+        if (e.target.classList.contains('row-checkbox')) {
+            updateSelectionState();
+        }
+    });
 
-// Open modal edit
-function editData(id){
-  editID=id;
-  document.body.classList.add("modal-open");
-  editModal.classList.remove("hidden");
-  db.ref("keuangan/"+id).once("value", snap=>{
-    const d=snap.val();
-    editNama.value=d.nama;
-    editProdi.value=d.prodi;
-    editAngkatan.value=d.angkatan;
-    editNominal.value=d.nominal;
-    editStatus.value=d.status;
-    editDivisi.innerHTML=divisiSelect.innerHTML;
-    editDivisi.value=d.divisi;
-    document.querySelector(`input[name='editTipe'][value='${d.tipe}']`).checked=true;
-  });
-}
+    function updateSelectionState() {
+        const selected = document.querySelectorAll('.row-checkbox:checked');
+        const total = document.querySelectorAll('.row-checkbox').length;
+        selectedCountSpan.textContent = selected.length;
+        deleteSelectedBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
+        
+        // Atur status "Select All"
+        if (total > 0 && selected.length === total) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selected.length > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
 
-function closeModal(){
-  document.body.classList.remove("modal-open");
-  editModal.classList.add("hidden");
-}
+    deleteSelectedBtn.addEventListener('click', () => {
+        const selected = document.querySelectorAll('.row-checkbox:checked');
+        if (selected.length === 0) return;
 
-// Submit modal edit
-document.getElementById("editForm").addEventListener("submit", e=>{
-  e.preventDefault();
-  const data = {
-    nama: editNama.value.trim(),
-    prodi: editProdi.value.trim(),
-    angkatan: editAngkatan.value,
-    divisi: editDivisi.value,
-    nominal: parseInt(editNominal.value)||0,
-    tipe: document.querySelector("input[name='editTipe']:checked")?.value,
-    status: editStatus.value,
-    updatedAt: Date.now()
-  };
-  db.ref("keuangan/"+editID).update(data);
-  closeModal();
-  info.textContent="Data berhasil diperbarui!";
-  info.classList.remove("hidden");
-  setTimeout(()=>info.classList.add("hidden"),2000);
-  updateKuota();
-});
+        if (!confirm(`Yakin ingin menghapus ${selected.length} data yang dipilih?`)) return;
+        if (!confirm('KONFIRMASI TERAKHIR. Data akan dihapus permanen. Lanjutkan?')) return;
+        
+        deletedItemsCache = []; // Reset cache
+        const deletions = [];
 
-// PENCARIAN REALTIME
-searchInput.addEventListener("input", () => {
-  const filter = searchInput.value.toLowerCase();
-  const rows = table.querySelectorAll("tr");
-  rows.forEach(row => {
-    const nama = row.cells[0]?.textContent.toLowerCase() || "";
-    const divisi = row.cells[1]?.textContent.toLowerCase() || "";
-    row.style.display = (nama.includes(filter) || divisi.includes(filter)) ? "" : "none";
-  });
-});
+        selected.forEach(checkbox => {
+            const anggotaKey = checkbox.getAttribute('data-anggota-key');
+            const pesananKey = checkbox.getAttribute('data-pesanan-key');
+
+            const deletedAnggota = combinedData.find(d => d.anggotaKey === anggotaKey);
+            if (deletedAnggota) deletedItemsCache.push(deletedAnggota);
+
+            deletions.push(database.ref(`anggota/${anggotaKey}`).remove());
+            deletions.push(database.ref(`pesanan/${pesananKey}`).remove());
+        });
+
+        Promise.all(deletions).then(() => {
+            alert(`✅ ${selected.length} data berhasil dihapus.`);
+            undoDeleteBtn.style.display = 'inline-block';
+            // Listener akan memuat ulang tabel secara otomatis
+        }).catch(error => {
+            console.error('Mass Delete Error:', error);
+            alert('❌ Gagal menghapus sebagian atau seluruh data.');
+        });
+    });
+
+    undoDeleteBtn.addEventListener('click', async () => {
+        if (deletedItemsCache.length === 0) return;
+
+        if (!confirm(`Yakin ingin mengembalikan ${deletedItemsCache.length} data yang baru saja dihapus?`)) return;
+
+        const restorations = [];
+        deletedItemsCache.forEach(data => {
+            // Restore Anggota
+            const dataAnggota = {
+                nama: data.nama, divisi: data.divisi, jabatan: data.jabatan,
+                prodiAkt: data.prodiAkt, welpart: data.welpart, kas: data.kas,
+                hasilAkhir: data.hasilAkhir
+            };
+            restorations.push(database.ref(`anggota/${data.anggotaKey}`).set(dataAnggota));
+
+            // Restore Pesanan
+            const dataPesanan = {
+                pemesan: data.nama, items: data.pesanan.items,
+                tagihan_akhir_total: data.tagihanTotal,
+                status_pembayaran: data.status, timestamp: new Date().toISOString()
+            };
+            restorations.push(database.ref(`pesanan/${data.pesananKey}`).set(dataPesanan));
+        });
+
+        Promise.all(restorations).then(() => {
+            alert(`✅ ${deletedItemsCache.length} data berhasil dikembalikan.`);
+            deletedItemsCache = [];
+            undoDeleteBtn.style.display = 'none';
+        }).catch(error => {
+            console.error('Undo Error:', error);
+            alert('❌ Gagal mengembalikan sebagian atau seluruh data.');
+        });
+    });
+
 </script>
 </body>
 </html>
