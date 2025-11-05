@@ -278,6 +278,15 @@
                 <button id="undoDeleteBtn" style="background-color: #ffc107; width: auto; display: none; margin-top: 0; color: #333;">↩️ Undo Hapus</button>
             </div>
 
+<div class="search-container" style="margin-bottom: 15px;">
+  <label for="searchPesanan">🔍 Cari Pesanan (berdasarkan huruf):</label>
+  <input 
+      type="text" 
+      id="searchPesanan" 
+      placeholder="Ketik nama atau pesanan untuk mencari..."
+      onkeyup="searchPesananByHuruf()"
+  >
+</div>
 
             <table id="finalDataTable">
                 <thead>
@@ -848,6 +857,31 @@
     // Pastikan tampilan awal divisi/update
     updateDivisiFields(false);
     loadFinalTable();
+    // --- FITUR PENCARIAN PESANAN BERDASARKAN HURUF ---
+function searchPesananByHuruf() {
+    const input = document.getElementById("searchPesanan");
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById("finalDataTable");
+    const tr = table.getElementsByTagName("tr");
+
+    // mulai dari index 1 agar header tidak ikut difilter
+    for (let i = 1; i < tr.length; i++) {
+        const tdNama = tr[i].getElementsByTagName("td")[2]; // kolom Nama
+        const tdPesanan = tr[i].getElementsByTagName("td")[5]; // kolom Pesanan
+
+        if (tdNama || tdPesanan) {
+            const namaText = tdNama ? tdNama.textContent.toLowerCase() : "";
+            const pesananText = tdPesanan ? tdPesanan.textContent.toLowerCase() : "";
+
+            if (namaText.includes(filter) || pesananText.includes(filter)) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+}
+
 
 </script>
 
