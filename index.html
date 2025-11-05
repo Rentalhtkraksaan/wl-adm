@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -233,6 +234,27 @@
     
     <div class="container">
         <section class="table-section">
+            <!-- Tambahan Filter Total -->
+<div id="summaryFilter" style="
+    display: flex; 
+    gap: 20px; 
+    margin: 15px 0; 
+    flex-wrap: wrap;
+">
+  <div style="flex: 1; background: #e8f5e9; border-radius: 10px; padding: 15px; text-align: center;">
+    <h4>🍱 Total Makanan</h4>
+    <span id="totalMakanan" style="font-weight: bold; font-size: 1.2em;">Rp 0</span>
+  </div>
+  <div style="flex: 1; background: #fff3cd; border-radius: 10px; padding: 15px; text-align: center;">
+    <h4>💰 Total Welpart</h4>
+    <span id="totalWelpart" style="font-weight: bold; font-size: 1.2em;">Rp 0</span>
+  </div>
+  <div style="flex: 1; background: #d1ecf1; border-radius: 10px; padding: 15px; text-align: center;">
+    <h4>💵 Total Kas</h4>
+    <span id="totalKas" style="font-weight: bold; font-size: 1.2em;">Rp 0</span>
+  </div>
+</div>
+
             <h2>📊 Laporan Gabungan Hasil Akhir</h2>
             
             <div class="search-container">
@@ -293,20 +315,23 @@
         appId: "1:40585612014:web:c88141fee3699aca68181ff",
         measurementId: "G-S8D7DFJ1G3"
     };
-    
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
-    
-    // --- 2. VARIABEL & DOM ELEMENTS ---
-    // PENAMBAHAN DIVISI INBIS (Kuota 12)
-    const kuotaDivisi = { Bpi: 6, Medinfo: 10, Network: 14, Kwu: 12, Demis: 10, Inbis: 12 }; 
-    // STANDAR MINIMUM WELPART & KAS (Disarankan)
-    const minWelpart = 7000; // Contoh: Minimum Welpart 20.000
-    const minKas = 10000; // Contoh: Minimum Kas 10.000
 
-    let currentDivisiCounts = {}; 
+    // --- 2. VARIABEL & DOM ELEMENTS ---
+    const kuotaDivisi = { Bpi: 6, Medinfo: 10, Network: 14, Kwu: 12, Demis: 10, Inbis: 12 };
+    const minWelpart = 7000;
+    const minKas = 10000;
+
+    let currentDivisiCounts = {};
+    let combinedData = [];
+    let currentFilterDivisi = '';
+    let deletedItemsCache = [];
+    let itemCounter = 1;
+
     const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
 
+    // DOM
     const finalTableBody = document.querySelector('#finalDataTable tbody');
     const integratedForm = document.getElementById('integratedForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -315,7 +340,7 @@
     const kasInput = document.getElementById('kas');
     const editKeyAnggotaInput = document.getElementById('editKeyAnggota');
     const editKeyPesananInput = document.getElementById('editKeyPesanan');
-    const hasilAkhirInput = document.getElementById('hasilAkhirInput'); 
+    const hasilAkhirInput = document.getElementById('hasilAkhirInput');
     const filterButtons = document.querySelectorAll('.filter-btn');
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
@@ -324,41 +349,23 @@
     const welpartStatusSpan = document.getElementById('welpartStatus');
     const kasStatusSpan = document.getElementById('kasStatus');
 
-    let itemCounter = 1;
-    let combinedData = []; 
-    let currentFilterDivisi = '';
-    let deletedItemsCache = []; // Untuk fungsi Undo
-
-    // --- 3. FUNGSI UTAMA (LOGIKA BARU) ---
-
-    // FUNGSI BARU: Cek Status Welpart (Merah/Hijau)
+    // --- 3. FUNGSI UTILITY ---
     function checkWelpart() {
         const val = parseInt(welpartInput.value) || 0;
         const isSesuai = val >= minWelpart;
-
-        welpartStatusSpan.textContent = isSesuai 
-            ? '✅ Sudah Sesuai' 
-            : `❌ Kurang dari ${formatter.format(minWelpart)}`;
+        welpartStatusSpan.textContent = isSesuai ? '✅ Sudah Sesuai' : `❌ Kurang dari ${formatter.format(minWelpart)}`;
         welpartStatusSpan.style.color = isSesuai ? 'green' : 'red';
         welpartInput.style.borderColor = isSesuai ? 'green' : 'red';
     }
 
-    // FUNGSI BARU: Cek Status Kas (Merah/Hijau)
     function checkKas() {
         const val = parseInt(kasInput.value) || 0;
         const isSesuai = val >= minKas;
-
-        kasStatusSpan.textContent = isSesuai 
-            ? '✅ Sudah Sesuai' 
-            : `❌ Kurang dari ${formatter.format(minKas)}`;
+        kasStatusSpan.textContent = isSesuai ? '✅ Sudah Sesuai' : `❌ Kurang dari ${formatter.format(minKas)}`;
         kasStatusSpan.style.color = isSesuai ? 'green' : 'red';
         kasInput.style.borderColor = isSesuai ? 'green' : 'red';
     }
 
-    welpartInput.oninput = checkWelpart;
-    kasInput.oninput = checkKas;
-
-    // FUNGSI BARU: Memperbarui Kuota Divisi dan Blokir Pilihan yang Penuh
     function updateDivisiFields(isEditMode = false, currentDivisi = null) {
         const selectedDivisi = divisiSelect.value;
         const currentCount = currentDivisiCounts[selectedDivisi] || 0;
@@ -367,37 +374,28 @@
         document.getElementById('currentCount').textContent = currentCount;
         document.getElementById('maxQuota').textContent = maxQuota;
         document.getElementById('kuotaDisplay').textContent = selectedDivisi ? `${currentCount}/${maxQuota}` : '-';
-
-        // Tampilkan/Sembunyikan Jabatan BPI
         document.getElementById('jabatanGroup').style.display = selectedDivisi === 'Bpi' ? 'block' : 'none';
 
-        // LOGIKA BLOKIR DIVISI
         divisiSelect.querySelectorAll('option').forEach(option => {
             const div = option.value;
             if (div && kuotaDivisi[div]) {
                 const count = currentDivisiCounts[div] || 0;
                 const quota = kuotaDivisi[div];
-                // Jika sedang mode edit, jangan blokir divisi yang sedang diedit (anggota tsb)
-                const isCurrentEditDivisi = isEditMode && div === currentDivisi; 
+                const isCurrentEditDivisi = isEditMode && div === currentDivisi;
                 const isFull = count >= quota && !isCurrentEditDivisi;
-                
                 option.disabled = isFull;
                 option.textContent = isFull ? `${div} (PENUH: ${quota})` : div;
             }
         });
     }
 
-    divisiSelect.addEventListener('change', () => updateDivisiFields());
-
-
-    // Fungsi Generik untuk Simpan/Update
     async function saveOrUpdateToFirebase(path, key, data, formName) {
         try {
             if (key) {
                 await database.ref(`${path}/${key}`).set(data);
-                return `✅ Data ${formName} berhasil **diperbarui**.`;
+                return key;
             } else {
-                const newRef = database.ref(path).push(data);
+                const newRef = await database.ref(path).push(data);
                 return newRef.key;
             }
         } catch (error) {
@@ -405,17 +403,12 @@
             throw new Error(`❌ Gagal menyimpan/memperbarui data ${formName}.`);
         }
     }
-    
-    /**
-     * FUNGSI: Mengembalikan formulir ke keadaan semula (Pulih/Bersih)
-     */
+
     function resetIntegratedForm() {
         integratedForm.reset();
         editKeyAnggotaInput.value = '';
         editKeyPesananInput.value = '';
         submitBtn.textContent = '💾 Simpan Anggota & Pesanan (Selesai)';
-        
-        // Reset Item List ke Item 1 Kosong
         itemCounter = 1;
         document.getElementById('item-list').innerHTML = `
             <div class="item-group" id="item_1">
@@ -428,22 +421,19 @@
             </div>
         `;
         calculateTotal();
-        // Reset status dan border warna
-        welpartInput.style.borderColor = '#ddd'; 
-        kasInput.style.borderColor = '#ddd'; 
+        welpartInput.style.borderColor = '#ddd';
+        kasInput.style.borderColor = '#ddd';
         welpartStatusSpan.textContent = '';
         kasStatusSpan.textContent = '';
-        updateDivisiFields(); 
+        updateDivisiFields();
     }
 
-    // FUNGSI INTI: Handle Submit Form Terintegrasi (Simpan/Edit)
+    // --- 4. HANDLER FORM SUBMIT (SIMPAN / EDIT) ---
     integratedForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const isEditMode = !!editKeyAnggotaInput.value;
         const selectedDivisi = divisiSelect.value;
-        
-        // Cek Kuota (Hanya mode Tambah Baru)
+
         if (!isEditMode) {
             const currentCount = currentDivisiCounts[selectedDivisi] || 0;
             const maxQuota = kuotaDivisi[selectedDivisi] || 0;
@@ -453,16 +443,15 @@
             }
         }
 
-        // Konfirmasi jika Welpart/Kas di bawah minimum (BARU)
         if (parseInt(welpartInput.value) < minWelpart || parseInt(kasInput.value) < minKas) {
-             if (!confirm('Kontribusi Welpart atau Kas belum mencapai minimum yang disarankan. Lanjutkan simpan data?')) {
-                return; 
-             }
+            if (!confirm('Kontribusi Welpart atau Kas belum mencapai minimum yang disarankan. Lanjutkan simpan data?')) {
+                return;
+            }
         }
 
         const namaAnggota = document.getElementById('nama').value.trim();
         const tahunAngkatan = document.getElementById('angkatan').value.slice(-2);
-        
+
         const dataAnggota = {
             nama: namaAnggota,
             divisi: selectedDivisi,
@@ -470,7 +459,7 @@
             prodiAkt: `${document.getElementById('prodi').value.trim()}-${tahunAngkatan}`,
             welpart: parseInt(welpartInput.value) || 0,
             kas: parseInt(kasInput.value) || 0,
-            hasilAkhir: parseInt(hasilAkhirInput.value) || 0, // Hasil Akhir Manual
+            hasilAkhir: parseInt(hasilAkhirInput.value) || 0
         };
 
         const items = [];
@@ -483,76 +472,64 @@
             });
         });
 
-        const totalTagihan = items.reduce((sum, item) => sum + item.harga, 0);
+        const totalTagihan = items.reduce((s, it) => s + (it.harga || 0), 0);
 
         const dataPesanan = {
             pemesan: namaAnggota,
             items: items,
             tagihan_akhir_total: totalTagihan,
             status_pembayaran: document.getElementById('status').value,
-            timestamp: new Date().toISOString() 
+            timestamp: new Date().toISOString()
         };
-        
+
         try {
             let anggotaKeyToUpdate = isEditMode ? editKeyAnggotaInput.value : null;
-
             const resAnggota = await saveOrUpdateToFirebase('anggota', anggotaKeyToUpdate, dataAnggota, 'Anggota');
-            await saveOrUpdateToFirebase('pesanan', editKeyPesananInput.value, dataPesanan, 'Pesanan');
+            const resPesanan = await saveOrUpdateToFirebase('pesanan', editKeyPesananInput.value, dataPesanan, 'Pesanan');
 
             if (!isEditMode) {
-                anggotaKeyToUpdate = resAnggota; 
-                alert(`Data berhasil disimpan!`);
+                anggotaKeyToUpdate = resAnggota;
+                alert('Data berhasil disimpan!');
             } else {
                 alert(`Data ${namaAnggota} berhasil diperbarui!`);
             }
 
             resetIntegratedForm();
-            loadFinalTable(true, anggotaKeyToUpdate); 
-
+            loadFinalTable(true, anggotaKeyToUpdate);
         } catch (error) {
-            alert(error.message);
+            alert(error.message || 'Gagal menyimpan data.');
         }
     });
-    
-    // FUNGSI HAPUS TUNGGAL
+
+    // --- 5. HAPUS / EDIT / UNDO ---
     window.deleteData = function(anggotaKey, pesananKey, nama) {
         if (!confirm(`Yakin ingin menghapus data anggota ${nama} dan pesanannya?`)) return;
         if (!confirm('KONFIRMASI TERAKHIR. DATA AKAN TERHAPUS. Lanjutkan?')) return;
 
-        // Ambil data sebelum dihapus untuk fitur 'Undo'
         const deletedAnggota = combinedData.find(d => d.anggotaKey === anggotaKey);
         if (deletedAnggota) {
             deletedItemsCache.push(deletedAnggota);
             undoDeleteBtn.style.display = 'inline-block';
         }
-        
-        try {
-            database.ref(`anggota/${anggotaKey}`).remove();
-            database.ref(`pesanan/${pesananKey}`).remove();
-            alert(`✅ Data ${nama} berhasil dihapus.`);
-            // Pembaruan akan otomatis oleh listener
-        } catch (error) {
-            console.error('Delete Error:', error);
-            alert('❌ Gagal menghapus data.');
-        }
-    }
 
-    // FUNGSI EDIT DATA
+        database.ref(`anggota/${anggotaKey}`).remove().catch(err => console.error(err));
+        database.ref(`pesanan/${pesananKey}`).remove().catch(err => console.error(err));
+    };
+
     window.editData = function(anggotaKey, pesananKey) {
         const data = combinedData.find(d => d.anggotaKey === anggotaKey);
         if (!data) return alert('Data tidak ditemukan.');
 
-        // 1. Data Anggota
+        // Anggota
         editKeyAnggotaInput.value = anggotaKey;
         document.getElementById('nama').value = data.nama;
         divisiSelect.value = data.divisi;
-        document.getElementById('prodi').value = data.prodiAkt.split('-')[0];
-        document.getElementById('angkatan').value = '20' + data.prodiAkt.split('-')[1];
-        welpartInput.value = data.welpart;
-        kasInput.value = data.kas;
-        hasilAkhirInput.value = data.hasilAkhir;
-
-        // Panggil untuk update tampilan kuota, status, dan jabatan
+        const prodiParts = (data.prodiAkt || '-').split('-');
+        document.getElementById('prodi').value = prodiParts[0] || '';
+        document.getElementById('angkatan').value = prodiParts[1] ? '20' + prodiParts[1] : '';
+        welpartInput.value = data.welpart || 0;
+        kasInput.value = data.kas || 0;
+        hasilAkhirInput.value = data.hasilAkhir || 0;
         updateDivisiFields(true, data.divisi);
         checkWelpart();
         checkKas();
@@ -560,245 +537,92 @@
             document.getElementById('jabatanBPI').value = data.jabatan;
         }
 
-        // 2. Data Pesanan
+        // Pesanan
         editKeyPesananInput.value = pesananKey;
-        document.getElementById('status').value = data.status;
+        document.getElementById('status').value = data.status || 'tidak';
 
         const itemsContainer = document.getElementById('item-list');
         itemsContainer.innerHTML = '';
         itemCounter = 1;
-        
-        // Asumsi data.items ada di object combinedData (Perlu dipastikan saat load data)
-        const pesananData = data.pesanan || []; // Gunakan data pesanan lengkap jika tersedia
 
-        if (pesananData.length === 0 && data.pesananText) {
-             // Jika data.pesanan tidak lengkap, setidaknya buat 1 item kosong agar form tidak error
-             pesananData.push({ makanan: '', minuman: '', harga: 0 }); 
+        const pesananObj = data.pesanan || { items: [] };
+        if (!Array.isArray(pesananObj.items) || pesananObj.items.length === 0) {
+            itemsContainer.innerHTML += createItemField(itemCounter++);
+        } else {
+            pesananObj.items.forEach(item => itemsContainer.innerHTML += createItemField(itemCounter++, item));
         }
-
-        (pesananData.items || []).forEach((item) => {
-             itemsContainer.innerHTML += createItemField(itemCounter++, item);
-        });
-
         calculateTotal();
 
         submitBtn.textContent = `💾 Perbarui Data ${data.nama}`;
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    };
 
-    // FUNGSI RENDER: Membangun Baris Tabel
+    undoDeleteBtn.addEventListener('click', async () => {
+        if (deletedItemsCache.length === 0) return;
+        if (!confirm(`Yakin ingin mengembalikan ${deletedItemsCache.length} data yang baru saja dihapus?`)) return;
+
+        const restorations = [];
+        deletedItemsCache.forEach(data => {
+            const dataAnggota = {
+                nama: data.nama, divisi: data.divisi, jabatan: data.jabatan,
+                prodiAkt: data.prodiAkt, welpart: data.welpart, kas: data.kas,
+                hasilAkhir: data.hasilAkhir
+            };
+            restorations.push(database.ref(`anggota/${data.anggotaKey}`).set(dataAnggota));
+
+            const dataPesanan = {
+                pemesan: data.nama,
+                items: (data.pesanan && data.pesanan.items) || [],
+                tagihan_akhir_total: data.tagihanTotal || 0,
+                status_pembayaran: data.status || 'tidak',
+                timestamp: new Date().toISOString()
+            };
+            restorations.push(database.ref(`pesanan/${data.pesananKey}`).set(dataPesanan));
+        });
+
+        try {
+            await Promise.all(restorations);
+            alert(`✅ ${deletedItemsCache.length} data berhasil dikembalikan.`);
+            deletedItemsCache = [];
+            undoDeleteBtn.style.display = 'none';
+        } catch (err) {
+            console.error('Undo Error:', err);
+            alert('❌ Gagal mengembalikan sebagian atau seluruh data.');
+        }
+    });
+
+    // --- 6. RENDER TABEL & TOTALS ---
     function createTableRow(data) {
         const row = document.createElement('tr');
-        
-        // Tentukan warna latar belakang untuk Welpart dan Kas (BARU)
         const welpartBgClass = data.welpart >= minWelpart ? 'cell-green-bg' : 'cell-red-bg';
         const kasBgClass = data.kas >= minKas ? 'cell-green-bg' : 'cell-red-bg';
-        
-        // Tentukan warna status pembayaran
         const statusClass = data.status === 'tidak' ? 'red-status-table' : '';
         const statusText = data.status === 'lunas' ? 'LUNAS' : 'TIDAK LUNAS';
-        
         row.innerHTML = `
             <td><input type="checkbox" class="row-checkbox" data-anggota-key="${data.anggotaKey}" data-pesanan-key="${data.pesananKey}"></td>
             <td>${data.index}</td>
             <td>${data.nama}</td>
-            <td>${data.divisi}${data.jabatan ? ` (${data.jabatan})` : ''}</td>
-            <td>${data.prodiAkt}</td>
-            <td class="item-list-cell">${data.pesananText}</td>
-            <td>${formatter.format(data.tagihanTotal)}</td>
-            <td class="${welpartBgClass}">${formatter.format(data.welpart)}</td>
-            <td class="${kasBgClass}">${formatter.format(data.kas)}</td>
-            <td>${formatter.format(data.hasilAkhir)}</td>
+            <td>${data.divisi || '-' }${data.jabatan ? ` (${data.jabatan})` : ''}</td>
+            <td>${data.prodiAkt || '-'}</td>
+            <td class="item-list-cell">${(data.pesananText || '').replace(/\n/g, '<br>')}</td>
+            <td>${formatter.format(data.tagihanTotal || 0)}</td>
+            <td class="${welpartBgClass}">${formatter.format(data.welpart || 0)}</td>
+            <td class="${kasBgClass}">${formatter.format(data.kas || 0)}</td>
+            <td>${formatter.format(data.hasilAkhir || 0)}</td>
             <td class="${statusClass}">${statusText}</td>
             <td>
                 <button class="edit-btn action-btn" onclick="editData('${data.anggotaKey}', '${data.pesananKey}')">✏️ Edit</button>
-                <button class="delete-btn action-btn" onclick="deleteData('${data.anggotaKey}', '${data.pesananKey}', '${data.nama}')">🗑️ Hapus</button>
+                <button class="delete-btn action-btn" onclick="deleteData('${data.anggotaKey}', '${data.pesananKey}', '${data.nama.replace(/'/g,"\\'")}')">🗑️ Hapus</button>
             </td>
         `;
         return row;
     }
-
-    // FUNGSI UTAMA: Render/Gambar Ulang Tabel
-    function renderFinalTable() {
-        finalTableBody.innerHTML = '';
-        let filteredData = combinedData;
-
-        // Filter Divisi
-        if (currentFilterDivisi) {
-            filteredData = filteredData.filter(item => item.divisi === currentFilterDivisi);
-        }
-
-        // Filter Pencarian
-        const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
-        if (searchVal) {
-             filteredData = filteredData.filter(item => 
-                item.nama.toLowerCase().includes(searchVal) ||
-                item.divisi.toLowerCase().includes(searchVal) ||
-                item.prodiAkt.toLowerCase().includes(searchVal)
-            );
-        }
-        
-        if (filteredData.length === 0) {
-            finalTableBody.innerHTML = `<tr><td colspan="12" style="text-align: center;">Tidak ada data yang tersedia atau tidak ditemukan.</td></tr>`;
-            return;
-        }
-
-        filteredData.forEach((data, index) => {
-            data.index = index + 1; 
-            finalTableBody.appendChild(createTableRow(data));
-        });
-        
-        updateSelectionState(); 
-    }
-    
-    // FUNGSI INTI: Muat dan Gabungkan Data dari Firebase (Diperbarui untuk menyimpan detail pesanan)
-    async function loadFinalTable(scrollToTop = false, highlightKey = null) {
-        finalTableBody.innerHTML = '<tr><td colspan="12" style="text-align: center;">Memuat data gabungan...</td></tr>';
-        
-        try {
-            const anggotaSnapshot = await database.ref('anggota').once('value');
-            const pesananSnapshot = await database.ref('pesanan').once('value');
-            
-            const anggotaData = anggotaSnapshot.val() || {};
-            const pesananData = pesananSnapshot.val() || {};
-            
-            combinedData = [];
-            currentDivisiCounts = {}; 
-
-            const pesananMap = {};
-            for (const key in pesananData) {
-                if (pesananData.hasOwnProperty(key)) {
-                    pesananMap[pesananData[key].pemesan] = { ...pesananData[key], pesananKey: key };
-                }
-            }
-            
-            let index = 1;
-            for (const anggotaKey in anggotaData) {
-                if (anggotaData.hasOwnProperty(anggotaKey)) {
-                    const anggota = anggotaData[anggotaKey];
-                    const pesanan = pesananMap[anggota.nama]; 
-                    
-                    currentDivisiCounts[anggota.divisi] = (currentDivisiCounts[anggota.divisi] || 0) + 1;
-
-                    if (pesanan) {
-                        const pesananText = pesanan.items.map(item => `${item.makanan} + ${item.minuman} (${formatter.format(item.harga)})`).join('\n');
-                        
-                        combinedData.push({
-                            index: index++,
-                            anggotaKey: anggotaKey,
-                            pesananKey: pesanan.pesananKey,
-                            nama: anggota.nama,
-                            divisi: anggota.divisi,
-                            jabatan: anggota.jabatan,
-                            prodiAkt: anggota.prodiAkt,
-                            pesananText: pesananText,
-                            tagihanTotal: pesanan.tagihan_akhir_total,
-                            welpart: anggota.welpart,
-                            kas: anggota.kas,
-                            hasilAkhir: anggota.hasilAkhir,
-                            status: pesanan.status_pembayaran,
-                            pesanan: pesanan // Simpan objek pesanan lengkap untuk fungsi edit
-                        });
-                    }
-                }
-            }
-            
-            updateDivisiFields(false); 
-            renderFinalTable(); 
-            
-            if (scrollToTop) {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-
-        } catch (error) {
-            console.error('Gagal memuat data:', error);
-            finalTableBody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: red;">❌ Gagal memuat data dari Firebase. Cek koneksi atau konfigurasi.</td></tr>`;
-        }
-    }
-    
-    // Mulai mendengarkan perubahan data di Firebase (Listener Realtime)
-    database.ref('anggota').on('value', () => loadFinalTable());
-
-
-    // --- 4. FUNGSI PELENGKAP (Item Pesanan, Total, Filter, Delete Massal) ---
-
-    // Membangun Field Item Pesanan
-    function createItemField(id, data = { makanan: '', minuman: '', harga: 0 }) {
-        return `
-            <div class="item-group" id="item_${id}">
-                <h4>Item ${id} <button type="button" class="remove-item-btn" onclick="removeItem('${id}')">Hapus Item</button></h4>
-                <div class="input-group-row">
-                    <div class="form-group"><label>Makanan:</label><input type="text" class="nama-makan" value="${data.makanan}" required></div>
-                    <div class="form-group"><label>Minuman:</label><input type="text" class="nama-minum" value="${data.minuman}" required></div>
-                    <div class="form-group" style="flex: 0.5;"><label>Harga (Rp):</label><input type="number" class="harga-item" value="${data.harga}" required min="0" oninput="calculateTotal()"></div>
-                </div>
-            </div>
-        `;
-    }
-
-    // Tambah Item Pesanan
-    document.getElementById('addItemBtn').addEventListener('click', () => {
-        itemCounter++;
-        const itemsContainer = document.getElementById('item-list');
-        itemsContainer.insertAdjacentHTML('beforeend', createItemField(itemCounter));
-        calculateTotal();
-    });
-
-    // Hapus Item Pesanan
-    window.removeItem = function(id) {
-        if (document.querySelectorAll('#item-list .item-group').length > 1) {
-            document.getElementById(`item_${id}`).remove();
-            calculateTotal();
-        } else {
-            alert('Minimal harus ada 1 item pesanan.');
-        }
-    }
-
-    // Hitung Total Pesanan
-    window.calculateTotal = function() {
-        let total = 0;
-        document.querySelectorAll('.harga-item').forEach(input => {
-            total += parseInt(input.value) || 0;
-        });
-        document.getElementById('tagihanAkhir').value = formatter.format(total);
-    }
-    
-    // Pencarian Tabel
-    window.searchTable = function() {
-        renderFinalTable(); 
-    }
-
-    // Filter Tabel
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentFilterDivisi = btn.getAttribute('data-divisi');
-            filterButtons.forEach(b => b.style.backgroundColor = '#007bff');
-            btn.style.backgroundColor = '#28a745';
-            renderFinalTable();
-        });
-    });
-
-    // Fitur Select All & Delete Selected
-    selectAllCheckbox.addEventListener('change', (e) => {
-        document.querySelectorAll('.row-checkbox').forEach(checkbox => {
-            checkbox.checked = e.target.checked;
-        });
-        updateSelectionState();
-    });
-
-    document.getElementById('finalDataTable').addEventListener('change', (e) => {
-        if (e.target.classList.contains('row-checkbox')) {
-            updateSelectionState();
-        }
-    });
 
     function updateSelectionState() {
         const selected = document.querySelectorAll('.row-checkbox:checked');
         const total = document.querySelectorAll('.row-checkbox').length;
         selectedCountSpan.textContent = selected.length;
         deleteSelectedBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
-        
-        // Atur status "Select All"
         if (total > 0 && selected.length === total) {
             selectAllCheckbox.checked = true;
             selectAllCheckbox.indeterminate = false;
@@ -811,71 +635,221 @@
         }
     }
 
+    function renderFinalTable() {
+        finalTableBody.innerHTML = '';
+        let filteredData = combinedData.slice();
+
+        if (currentFilterDivisi) filteredData = filteredData.filter(item => item.divisi === currentFilterDivisi);
+
+        const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+        if (searchVal) {
+            filteredData = filteredData.filter(item =>
+                (item.nama || '').toLowerCase().includes(searchVal) ||
+                (item.divisi || '').toLowerCase().includes(searchVal) ||
+                (item.prodiAkt || '').toLowerCase().includes(searchVal)
+            );
+        }
+
+        if (filteredData.length === 0) {
+            finalTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">Tidak ada data yang tersedia atau tidak ditemukan.</td></tr>`;
+            // Update totals to zero when nothing
+            updateTotalSummary([]);
+            return;
+        }
+
+        filteredData.forEach((data, idx) => {
+            data.index = idx + 1;
+            finalTableBody.appendChild(createTableRow(data));
+        });
+
+        // attach selection listener (delegation)
+        finalTableBody.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateSelectionState);
+        });
+
+        updateSelectionState();
+        updateTotalSummary(filteredData);
+    }
+
+    function updateTotalSummary(filteredData) {
+        // totalMakanan = sum of tagihanTotal
+        let totalMakanan = 0;
+        let totalWelpart = 0;
+        let totalKas = 0;
+
+        filteredData.forEach(item => {
+            totalMakanan += Number(item.tagihanTotal || 0);
+            totalWelpart += Number(item.welpart || 0);
+            totalKas += Number(item.kas || 0);
+        });
+
+        document.getElementById('totalMakanan').textContent = formatter.format(totalMakanan);
+        document.getElementById('totalWelpart').textContent = formatter.format(totalWelpart);
+        document.getElementById('totalKas').textContent = formatter.format(totalKas);
+    }
+
+    // --- 7. LOAD & GABUNG DATA DARI FIREBASE ---
+    async function loadFinalTable(scrollToTop = false, highlightKey = null) {
+        finalTableBody.innerHTML = '<tr><td colspan="12" style="text-align:center;">Memuat data gabungan...</td></tr>';
+        try {
+            const [anggotaSnapshot, pesananSnapshot] = await Promise.all([
+                database.ref('anggota').once('value'),
+                database.ref('pesanan').once('value')
+            ]);
+
+            const anggotaData = anggotaSnapshot.val() || {};
+            const pesananData = pesananSnapshot.val() || {};
+
+            combinedData = [];
+            currentDivisiCounts = {};
+
+            // Build pesanan map by pemesan name (pemesan => pesananObject)
+            const pesananMap = {};
+            for (const pk in pesananData) {
+                if (!pesananData.hasOwnProperty(pk)) continue;
+                const p = pesananData[pk];
+                // store key inside
+                pesananMap[p.pemesan] = { ...p, pesananKey: pk };
+            }
+
+            // combine
+            for (const anggotaKey in anggotaData) {
+                if (!anggotaData.hasOwnProperty(anggotaKey)) continue;
+                const anggota = anggotaData[anggotaKey];
+                const nama = anggota.nama;
+                const pesanan = pesananMap[nama];
+
+                currentDivisiCounts[anggota.divisi] = (currentDivisiCounts[anggota.divisi] || 0) + 1;
+
+                const tagihanTotal = pesanan ? Number(pesanan.tagihan_akhir_total || 0) : 0;
+                const pesananText = pesanan ? (Array.isArray(pesanan.items) ? pesanan.items.map(it => `${it.makanan || '-'} + ${it.minuman || '-'} (${formatter.format(it.harga || 0)})`).join('\n') : '') : '';
+
+                combinedData.push({
+                    anggotaKey,
+                    pesananKey: pesanan ? pesanan.pesananKey : '',
+                    nama: nama,
+                    divisi: anggota.divisi,
+                    jabatan: anggota.jabatan,
+                    prodiAkt: anggota.prodiAkt,
+                    pesananText,
+                    tagihanTotal,
+                    welpart: Number(anggota.welpart || 0),
+                    kas: Number(anggota.kas || 0),
+                    hasilAkhir: Number(anggota.hasilAkhir || 0),
+                    status: pesanan ? pesanan.status_pembayaran : 'tidak',
+                    pesanan: pesanan || { items: [] }
+                });
+            }
+
+            updateDivisiFields(false);
+            renderFinalTable();
+
+            if (scrollToTop) window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) {
+            console.error('Gagal memuat data:', err);
+            finalTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:red;">❌ Gagal memuat data dari Firebase. Cek koneksi atau konfigurasi.</td></tr>`;
+        }
+    }
+
+    // --- 8. LISTENERS REALTIME (anggota + pesanan) ---
+    database.ref('anggota').on('value', () => loadFinalTable());
+    database.ref('pesanan').on('value', () => loadFinalTable());
+
+    // --- 9. FUNGSI ITEM (tambah/hapus/calculate) ---
+    function createItemField(id, data = { makanan: '', minuman: '', harga: 0 }) {
+        return `
+            <div class="item-group" id="item_${id}">
+                <h4>Item ${id} <button type="button" class="remove-item-btn" onclick="removeItem('${id}')">Hapus Item</button></h4>
+                <div class="input-group-row">
+                    <div class="form-group"><label>Makanan:</label><input type="text" class="nama-makan" value="${data.makanan || ''}" required></div>
+                    <div class="form-group"><label>Minuman:</label><input type="text" class="nama-minum" value="${data.minuman || ''}" required></div>
+                    <div class="form-group" style="flex: 0.5;"><label>Harga (Rp):</label><input type="number" class="harga-item" value="${data.harga || 0}" required min="0" oninput="calculateTotal()"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById('addItemBtn').addEventListener('click', () => {
+        itemCounter++;
+        const itemsContainer = document.getElementById('item-list');
+        itemsContainer.insertAdjacentHTML('beforeend', createItemField(itemCounter));
+        calculateTotal();
+    });
+
+    window.removeItem = function(id) {
+        if (document.querySelectorAll('#item-list .item-group').length > 1) {
+            const el = document.getElementById(`item_${id}`);
+            if (el) el.remove();
+            calculateTotal();
+        } else {
+            alert('Minimal harus ada 1 item pesanan.');
+        }
+    };
+
+    window.calculateTotal = function() {
+        let total = 0;
+        document.querySelectorAll('.harga-item').forEach(input => {
+            total += Number(input.value) || 0;
+        });
+        document.getElementById('tagihanAkhir').value = formatter.format(total);
+    };
+
+    // --- 10. FILTER, SEARCH, SELECT ALL, DELETE MASSAL ---
+    document.getElementById('searchInput').addEventListener('input', () => renderFinalTable());
+
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilterDivisi = btn.getAttribute('data-divisi') || '';
+            filterButtons.forEach(b => b.style.backgroundColor = '#007bff');
+            btn.style.backgroundColor = '#28a745';
+            renderFinalTable();
+        });
+    });
+
+    selectAllCheckbox.addEventListener('change', (e) => {
+        document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+            checkbox.checked = e.target.checked;
+        });
+        updateSelectionState();
+    });
+
+    document.getElementById('finalDataTable').addEventListener('change', (e) => {
+        if (e.target.classList.contains('row-checkbox')) updateSelectionState();
+    });
+
     deleteSelectedBtn.addEventListener('click', () => {
         const selected = document.querySelectorAll('.row-checkbox:checked');
         if (selected.length === 0) return;
-
         if (!confirm(`Yakin ingin menghapus ${selected.length} data yang dipilih?`)) return;
         if (!confirm('KONFIRMASI TERAKHIR. Data akan dihapus permanen. Lanjutkan?')) return;
-        
-        deletedItemsCache = []; // Reset cache
+
+        deletedItemsCache = [];
         const deletions = [];
 
         selected.forEach(checkbox => {
             const anggotaKey = checkbox.getAttribute('data-anggota-key');
             const pesananKey = checkbox.getAttribute('data-pesanan-key');
-
             const deletedAnggota = combinedData.find(d => d.anggotaKey === anggotaKey);
             if (deletedAnggota) deletedItemsCache.push(deletedAnggota);
-
             deletions.push(database.ref(`anggota/${anggotaKey}`).remove());
-            deletions.push(database.ref(`pesanan/${pesananKey}`).remove());
+            if (pesananKey) deletions.push(database.ref(`pesanan/${pesananKey}`).remove());
         });
 
         Promise.all(deletions).then(() => {
             alert(`✅ ${selected.length} data berhasil dihapus.`);
             undoDeleteBtn.style.display = 'inline-block';
-            // Listener akan memuat ulang tabel secara otomatis
-        }).catch(error => {
-            console.error('Mass Delete Error:', error);
+        }).catch(err => {
+            console.error('Mass Delete Error:', err);
             alert('❌ Gagal menghapus sebagian atau seluruh data.');
         });
     });
 
-    undoDeleteBtn.addEventListener('click', async () => {
-        if (deletedItemsCache.length === 0) return;
-
-        if (!confirm(`Yakin ingin mengembalikan ${deletedItemsCache.length} data yang baru saja dihapus?`)) return;
-
-        const restorations = [];
-        deletedItemsCache.forEach(data => {
-            // Restore Anggota
-            const dataAnggota = {
-                nama: data.nama, divisi: data.divisi, jabatan: data.jabatan,
-                prodiAkt: data.prodiAkt, welpart: data.welpart, kas: data.kas,
-                hasilAkhir: data.hasilAkhir
-            };
-            restorations.push(database.ref(`anggota/${data.anggotaKey}`).set(dataAnggota));
-
-            // Restore Pesanan
-            const dataPesanan = {
-                pemesan: data.nama, items: data.pesanan.items,
-                tagihan_akhir_total: data.tagihanTotal,
-                status_pembayaran: data.status, timestamp: new Date().toISOString()
-            };
-            restorations.push(database.ref(`pesanan/${data.pesananKey}`).set(dataPesanan));
-        });
-
-        Promise.all(restorations).then(() => {
-            alert(`✅ ${deletedItemsCache.length} data berhasil dikembalikan.`);
-            deletedItemsCache = [];
-            undoDeleteBtn.style.display = 'none';
-        }).catch(error => {
-            console.error('Undo Error:', error);
-            alert('❌ Gagal mengembalikan sebagian atau seluruh data.');
-        });
-    });
+    // --- 11. INISIALISASI AWAL ---
+    // Pastikan tampilan awal divisi/update
+    updateDivisiFields(false);
+    loadFinalTable();
 
 </script>
+
 </body>
 </html>
